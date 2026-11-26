@@ -17,7 +17,7 @@ class PrismSaveData {
     this.currentQuestStage = 1,
     this.questStarsByStage = const <int, int>{},
     this.solvedDailyDates = const <String>{},
-    this.themeId = PrismThemeId.obsidian,
+    this.themeId = PrismThemeId.ceramic,
     this.locale = AppLocale.tr,
     this.soundEnabled = true,
     this.hapticsEnabled = true,

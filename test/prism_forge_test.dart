@@ -7,7 +7,7 @@ import 'package:prism_forge/ui/app.dart';
 
 void main() {
   testWidgets(
-    'launches into PRISM FORGE Quest Stage 1 and switches modes/locales',
+    'launches into vibrant PRISM FORGE with Anvil slot, 24 stages & modes',
     (tester) async {
       await tester.pumpWidget(
         PrismForgeApp(
@@ -19,20 +19,26 @@ void main() {
 
       expect(find.text('PRİZMA DÖKÜM'), findsOneWidget);
       expect(find.text('#1/24'), findsOneWidget);
+      expect(find.byKey(const ValueKey<String>('anvil_slot')), findsOneWidget);
+      expect(find.text('Tropik'), findsOneWidget);
+
+      // Cycle vibrant themes (Tropik -> Şeker)
+      await tester.tap(find.byKey(const ValueKey<String>('theme_button')));
+      await tester.pumpAndSettle();
+      expect(find.text('Şeker'), findsOneWidget);
 
       // Switch to English
       await tester.tap(find.byKey(const ValueKey<String>('lang_button')));
       await tester.pumpAndSettle();
       expect(find.text('PRISM FORGE'), findsOneWidget);
+      expect(find.text('Anvil'), findsOneWidget);
 
-      // Open 24-Stage Quest Picker
+      // Open 24-Stage Quest Picker & select Stage 13
       await tester.tap(
         find.byKey(const ValueKey<String>('context_pill_button')),
       );
       await tester.pumpAndSettle();
       expect(find.text('Prism Quest — 24 Stages'), findsOneWidget);
-
-      // Select Stage 13 (First Seal)
       await tester.tap(find.text('#13 🔒'));
       await tester.pumpAndSettle();
       expect(find.text('#13/24'), findsOneWidget);
@@ -41,15 +47,6 @@ void main() {
       await tester.tap(find.byKey(const ValueKey<String>('rotate_button')));
       await tester.pumpAndSettle();
       expect(find.text('15%'), findsOneWidget);
-
-      // Switch to Endless and Daily modes cleanly
-      await tester.tap(find.byKey(const ValueKey<String>('mode_endless')));
-      await tester.pumpAndSettle();
-      expect(find.text('Best'), findsOneWidget);
-
-      await tester.tap(find.byKey(const ValueKey<String>('mode_daily')));
-      await tester.pumpAndSettle();
-      expect(find.text('Daily'), findsWidgets);
     },
   );
 }

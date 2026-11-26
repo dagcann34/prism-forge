@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2B1463"/>
+      <stop offset="52%" stop-color="#6020A8"/>
+      <stop offset="100%" stop-color="#DF248A"/>
+    </linearGradient>
+    <radialGradient id="halo" cx="50%" cy="48%" r="42%">
+      <stop offset="0%" stop-color="#00F0FF" stop-opacity="0.58"/>
+      <stop offset="55%" stop-color="#FF4DFF" stop-opacity="0.24"/>
+      <stop offset="100%" stop-color="#FF4DFF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="fTL" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#A5FAFF"/>
+      <stop offset="100%" stop-color="#00D2FF"/>
+    </linearGradient>
+    <linearGradient id="fTR" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFF8B0"/>
+      <stop offset="100%" stop-color="#FFC800"/>
+    </linearGradient>
+    <linearGradient id="fML" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38D6FF"/>
+      <stop offset="100%" stop-color="#6D28D9"/>
+    </linearGradient>
+    <linearGradient id="fMR" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF78B4"/>
+      <stop offset="100%" stop-color="#FF1E84"/>
+    </linearGradient>
+    <linearGradient id="fBL" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34F5A8"/>
+      <stop offset="100%" stop-color="#0095D9"/>
+    </linearGradient>
+    <linearGradient id="fBR" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E040FB"/>
+      <stop offset="100%" stop-color="#621BC9"/>
+    </linearGradient>
+    <linearGradient id="fCore" x1="15%" y1="0%" x2="85%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.96"/>
+      <stop offset="52%" stop-color="#C8F9FF" stop-opacity="0.84"/>
+      <stop offset="100%" stop-color="#FFE680" stop-opacity="0.90"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="15" fill="url(#bg)"/>
+  <rect x="3" y="3" width="58" height="58" rx="14" fill="none" stroke="#FFFFFF" stroke-opacity="0.30" stroke-width="1.5"/>
+  <circle cx="32" cy="31" r="24" fill="url(#halo)"/>
+  <polygon points="32,8 11,24 22,29 32,19" fill="url(#fTL)"/>
+  <polygon points="32,8 32,19 42,29 53,24" fill="url(#fTR)"/>
+  <polygon points="11,24 18,47 22,29" fill="url(#fML)"/>
+  <polygon points="53,24 42,29 46,47" fill="url(#fMR)"/>
+  <polygon points="18,47 32,57 32,43 22,29" fill="url(#fBL)"/>
+  <polygon points="46,47 42,29 32,43 32,57" fill="url(#fBR)"/>
+  <polygon points="32,19 42,29 32,43 22,29" fill="url(#fCore)"/>
+  <polyline points="11,24 32,8 53,24" fill="none" stroke="#FFFFFF" stroke-opacity="0.80" stroke-width="1.4" stroke-linejoin="round"/>
+  <polyline points="22,29 32,19 42,29" fill="none" stroke="#FFFFFF" stroke-opacity="0.88" stroke-width="1.2" stroke-linejoin="round"/>
+  <polygon points="32,8 53,24 46,47 32,57 18,47 11,24" fill="none" stroke="#FFFFFF" stroke-opacity="0.48" stroke-width="1.2" stroke-linejoin="round"/>
+  <path d="M32 20 L35 27.5 L42.5 30.5 L35 33.5 L32 41 L29 33.5 L21.5 30.5 L29 27.5 Z" fill="#FFFFFF" fill-opacity="0.45" transform="translate(32 30.5) scale(1.18) translate(-32 -30.5)"/>
+  <path d="M32 21.5 L34.6 27.9 L41 30.5 L34.6 33.1 L32 39.5 L29.4 33.1 L23 30.5 L29.4 27.9 Z" fill="#FFFFFF"/>
+  <path d="M13 10.5 L14.1 13.4 L17 14.5 L14.1 15.6 L13 18.5 L11.9 15.6 L9 14.5 L11.9 13.4 Z" fill="#FFF8B8"/>
+  <circle cx="51.5" cy="51.5" r="2.3" fill="#7DF9FF"/>
+</svg>

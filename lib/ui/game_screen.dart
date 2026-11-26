@@ -1,9 +1,11 @@
 /// Main one-handed portrait gameplay screen for PRISM FORGE (Prizma Döküm).
 ///
-/// Features drag-and-drop with upward touch lift offset, tap-to-place fallback,
-/// live pre-drop line-clear/Resonance/Cross-Wave previews, 4 game modes,
-/// Tactical Energy (90° Rotate + 3x3 Quantum Nova), 4 art themes, procedural
-/// pentatonic audio, haptics, and offline progress persistence.
+/// Features:
+/// - Radiant animated ambient backdrops (sunlit bubbles, candy sparkles, petals, bokeh)
+/// - 3 Tray Slots + 4th Golden Prism Anvil Slot (0px extra height, 3-turn Wildcard forging)
+/// - Live pre-drop previews for 2x2 Prism Synthesis, 4+ Resonance & ★->★ Laser Chains
+/// - Drag-and-drop (with upward touch lift) + tap-to-place + 90° Rotate + 3x3 Quantum Nova
+/// - 4 Modes, 4 Joyful Art Themes, lively multi-voice PCM audio, haptics & TR/EN
 library;
 
 import 'dart:async';
@@ -39,6 +41,9 @@ class PrismGameScreen extends StatefulWidget {
 
 class _PrismGameScreenState extends State<PrismGameScreen>
     with SingleTickerProviderStateMixin {
+  /// Sentinel slot index representing the Golden Prism Anvil (Forge Slot).
+  static const int _anvilSlotIndex = -1;
+
   final PrismEngine _engine = PrismEngine();
   final GlobalKey _boardKey = GlobalKey();
   final math.Random _fxRng = math.Random();
@@ -48,14 +53,16 @@ class _PrismGameScreenState extends State<PrismGameScreen>
   Timer? _bannerTimer;
 
   PrismSaveData _save = const PrismSaveData();
-  int _selectedTrayIdx = -1;
-  int? _draggingTrayIdx;
+
+  /// Selected slot: 0..2 for tray, -1 for Prism Anvil, null for none.
+  int? _selectedSlot;
+  int? _draggingSlot;
   Offset? _dragGlobalPos;
   PlacementPreview? _activePreview;
   bool _novaMode = false;
   GridPoint? _novaHover;
   String? _kineticBanner;
-  Color _kineticColor = const Color(0xFFFACC15);
+  Color _kineticColor = const Color(0xFFFFE14D);
 
   final List<ShardParticle> _particles = <ShardParticle>[];
   final List<ShockWave> _waves = <ShockWave>[];
@@ -64,12 +71,19 @@ class _PrismGameScreenState extends State<PrismGameScreen>
   PrismPalette get _palette => PrismThemes.of(_save.themeId);
   AppLocale get _locale => _save.locale;
 
+  PrismPiece? _pieceForSlot(int? slot) {
+    if (slot == null) return null;
+    if (slot == _anvilSlotIndex) return _engine.forgedPiece;
+    if (slot >= 0 && slot < 3) return _engine.tray[slot];
+    return null;
+  }
+
   @override
   void initState() {
     super.initState();
     _ticker = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 2),
+      duration: const Duration(seconds: 6),
     )..addListener(_onAnimationTick);
     _engine.startGame(newMode: widget.initialMode, stageNumber: 1);
     unawaited(_loadSave());
@@ -134,7 +148,7 @@ class _PrismGameScreenState extends State<PrismGameScreen>
     }
     for (var i = _waves.length - 1; i >= 0; i--) {
       final w = _waves[i];
-      w.life -= dt * 2.4;
+      w.life -= dt * 2.2;
       if (w.life <= 0) _waves.removeAt(i);
     }
   }
@@ -153,17 +167,15 @@ class _PrismGameScreenState extends State<PrismGameScreen>
       _kineticBanner = text;
       _kineticColor = color;
     });
-    _bannerTimer = Timer(const Duration(milliseconds: 1400), () {
-      if (mounted) {
-        setState(() => _kineticBanner = null);
-      }
+    _bannerTimer = Timer(const Duration(milliseconds: 1450), () {
+      if (mounted) setState(() => _kineticBanner = null);
     });
   }
 
   void _spawnClearFx(MoveOutcome outcome) {
     if (_save.reducedMotion) return;
     for (final r in outcome.clearedRows) {
-      _waves.add(ShockWave.row(r, _palette.accent));
+      _waves.add(ShockWave.row(r, _palette.boardBorderGlow));
     }
     for (final c in outcome.clearedCols) {
       _waves.add(ShockWave.col(c, _palette.resonanceColor));
@@ -171,23 +183,38 @@ class _PrismGameScreenState extends State<PrismGameScreen>
     for (final pr in outcome.triggeredPrisms) {
       _waves.add(ShockWave.ring(pr.x + 0.5, pr.y + 0.5, _palette.prismGold));
     }
+    for (final s in outcome.synthesizedCores) {
+      _waves.add(ShockWave.ring(s.x + 0.5, s.y + 0.5, Colors.white));
+    }
+    for (final beam in outcome.refractionBeams) {
+      _waves.add(
+        ShockWave.beam(
+          beam.from.x + 0.5,
+          beam.from.y + 0.5,
+          beam.to.x + 0.5,
+          beam.to.y + 0.5,
+          _palette.prismGold,
+        ),
+      );
+    }
     for (final pt in outcome.clearedCells) {
       final color = _palette
           .gemFor((pt.x + pt.y) % PrismEngine.paletteColorCount)
           .main;
       for (var i = 0; i < 6; i++) {
-        final ang = (_fxRng.nextDouble() * math.pi * 2);
-        final spd = 1.5 + _fxRng.nextDouble() * 3.8;
+        final ang = _fxRng.nextDouble() * math.pi * 2;
+        final spd = 1.6 + _fxRng.nextDouble() * 4.0;
         _particles.add(
           ShardParticle(
             gx: pt.x + 0.5,
             gy: pt.y + 0.5,
             vx: math.cos(ang) * spd,
-            vy: math.sin(ang) * spd - 1.1,
+            vy: math.sin(ang) * spd - 1.2,
             size: 0.13 + _fxRng.nextDouble() * 0.14,
             rotation: _fxRng.nextDouble() * math.pi,
             vRot: (_fxRng.nextDouble() - 0.5) * 0.28,
-            color: i.isEven ? color : Colors.white,
+            color: i.isEven ? color : _palette.prismGold,
+            isStar: i.isOdd,
           ),
         );
       }
@@ -222,8 +249,8 @@ class _PrismGameScreenState extends State<PrismGameScreen>
 
   void _startMode(GameMode mode, {int? stage}) {
     setState(() {
-      _selectedTrayIdx = -1;
-      _draggingTrayIdx = null;
+      _selectedSlot = null;
+      _draggingSlot = null;
       _activePreview = null;
       _novaMode = false;
       _novaHover = null;
@@ -291,41 +318,50 @@ class _PrismGameScreenState extends State<PrismGameScreen>
     return GridPoint(gx, gy);
   }
 
-  void _commitPlacement(int trayIdx, GridPoint anchor) {
-    final outcome = _engine.placePiece(trayIdx, anchor.x, anchor.y);
+  void _commitPlacement(int slotIndex, GridPoint anchor) {
+    final outcome = slotIndex == _anvilSlotIndex
+        ? _engine.placeForgedPiece(anchor.x, anchor.y)
+        : _engine.placePiece(slotIndex, anchor.x, anchor.y);
     if (!outcome.placed) return;
 
     setState(() {
-      _selectedTrayIdx = -1;
+      _selectedSlot = null;
       _activePreview = null;
     });
 
-    if (outcome.linesCleared > 0) {
+    if (outcome.linesCleared > 0 || outcome.synthesizedCores.isNotEmpty) {
       _spawnClearFx(outcome);
-      if (outcome.triggeredPrisms.isNotEmpty) {
-        widget.audio.playCue(PrismSoundCue.prismBlast);
-        _showBanner(
-          PrismStrings.crossWaveBanner.resolve(_locale),
-          _palette.prismGold,
-        );
-      } else {
-        widget.audio.playClearChord(
-          streak: _engine.streak,
-          lines: outcome.linesCleared,
-          resonance: outcome.triggeredResonance,
-        );
-      }
-      if (outcome.brokenLockCount > 0) {
-        widget.audio.playCue(PrismSoundCue.lockBreak);
-      } else if (outcome.crackedFrostCount > 0) {
-        widget.audio.playCue(PrismSoundCue.frostCrack);
-      }
-      if (outcome.allClearBonus) {
-        _showBanner(
-          PrismStrings.allClearBanner.resolve(_locale),
-          const Color(0xFF34D399),
-        );
-      } else if (outcome.triggeredResonance) {
+    }
+
+    if (outcome.objectiveCompleted) {
+      _blitzTimer?.cancel();
+      widget.audio.playCue(PrismSoundCue.stageClear);
+    } else if (outcome.allClearBonus) {
+      widget.audio.playCue(PrismSoundCue.allClear);
+      _showBanner(
+        PrismStrings.allClearBanner.resolve(_locale),
+        const Color(0xFF34E870),
+      );
+    } else if (outcome.refractionBeams.isNotEmpty) {
+      widget.audio.playCue(PrismSoundCue.prismBlast);
+      _showBanner(
+        PrismStrings.chainRefractionBanner(outcome.refractionBeams.length)
+            .resolve(_locale),
+        _palette.prismGold,
+      );
+    } else if (outcome.triggeredPrisms.isNotEmpty) {
+      widget.audio.playCue(PrismSoundCue.prismBlast);
+      _showBanner(
+        PrismStrings.crossWaveBanner.resolve(_locale),
+        _palette.prismGold,
+      );
+    } else if (outcome.linesCleared > 0) {
+      widget.audio.playClearChord(
+        streak: _engine.streak,
+        lines: outcome.linesCleared,
+        resonance: outcome.triggeredResonance,
+      );
+      if (outcome.triggeredResonance) {
         _showBanner(
           PrismStrings.resonanceBanner.resolve(_locale),
           _palette.resonanceColor,
@@ -333,17 +369,34 @@ class _PrismGameScreenState extends State<PrismGameScreen>
       } else if (outcome.linesCleared >= 2 || _engine.streak >= 2) {
         _showBanner(
           '+${outcome.pointsEarned}  ×${_engine.streak}',
-          _palette.accent,
+          _palette.prismGold,
         );
       }
+    } else if (outcome.synthesizedCores.isNotEmpty) {
+      widget.audio.playCue(PrismSoundCue.prismBlast);
+      _showBanner(
+        PrismStrings.synthesisBanner.resolve(_locale),
+        _palette.prismGold,
+      );
     } else {
       widget.audio.playCue(PrismSoundCue.place);
     }
 
-    if (outcome.objectiveCompleted) {
-      _blitzTimer?.cancel();
-      widget.audio.playCue(PrismSoundCue.prismBlast);
-    } else if (outcome.gameOver) {
+    if (outcome.brokenLockCount > 0) {
+      widget.audio.playCue(PrismSoundCue.lockBreak);
+    } else if (outcome.crackedFrostCount > 0) {
+      widget.audio.playCue(PrismSoundCue.frostCrack);
+    }
+
+    if (outcome.forgeTempered) {
+      widget.audio.playCue(PrismSoundCue.prismTempered);
+      _showBanner(
+        PrismStrings.temperedBanner.resolve(_locale),
+        _palette.prismGold,
+      );
+    }
+
+    if (outcome.gameOver) {
       _blitzTimer?.cancel();
       widget.audio.playCue(PrismSoundCue.fail);
     }
@@ -352,16 +405,57 @@ class _PrismGameScreenState extends State<PrismGameScreen>
     setState(() {});
   }
 
-  void _handleRotate() {
-    var idx = _selectedTrayIdx;
-    if (idx < 0 || _engine.tray[idx] == null) {
-      idx = _engine.tray.indexWhere((p) => p != null);
+  void _handleAnvilTap() {
+    if (_engine.isGameOver || _engine.isVictory) return;
+    // If a tray piece is currently selected, stash/swap it into the Prism Anvil!
+    if (_selectedSlot != null &&
+        _selectedSlot! >= 0 &&
+        _engine.tray[_selectedSlot!] != null &&
+        !_engine.forgeUsedThisTurn) {
+      if (_engine.stashOrSwapWithForge(_selectedSlot!)) {
+        widget.audio.playCue(PrismSoundCue.hold);
+        setState(() {
+          _selectedSlot = null;
+          _activePreview = null;
+        });
+        return;
+      }
     }
-    if (idx < 0) return;
-    if (_engine.rotateTrayPiece(idx)) {
+    // Otherwise toggle selecting the forged piece for direct board placement,
+    // OR stash the first tray piece if Anvil is empty!
+    if (_engine.forgedPiece != null) {
+      widget.audio.playCue(PrismSoundCue.pickup);
+      setState(() {
+        _selectedSlot = _selectedSlot == _anvilSlotIndex
+            ? null
+            : _anvilSlotIndex;
+        _activePreview = null;
+      });
+    } else if (!_engine.forgeUsedThisTurn) {
+      final firstIdx = _engine.tray.indexWhere((p) => p != null);
+      if (firstIdx >= 0 && _engine.stashOrSwapWithForge(firstIdx)) {
+        widget.audio.playCue(PrismSoundCue.hold);
+        setState(() {
+          _selectedSlot = null;
+          _activePreview = null;
+        });
+      }
+    }
+  }
+
+  void _handleRotate() {
+    var slot = _selectedSlot;
+    if (slot == null || _pieceForSlot(slot) == null) {
+      final idx = _engine.tray.indexWhere((p) => p != null);
+      slot = idx >= 0
+          ? idx
+          : (_engine.forgedPiece != null ? _anvilSlotIndex : null);
+    }
+    if (slot == null) return;
+    if (_engine.rotateTrayPiece(slot)) {
       widget.audio.playCue(PrismSoundCue.rotate);
       setState(() {
-        _selectedTrayIdx = idx;
+        _selectedSlot = slot;
         _activePreview = null;
       });
     }
@@ -374,6 +468,9 @@ class _PrismGameScreenState extends State<PrismGameScreen>
     _waves.add(ShockWave.ring(cell.x + 0.5, cell.y + 0.5, _palette.prismGold));
     widget.audio.playCue(PrismSoundCue.nova);
     _showBanner('NOVA +${outcome.pointsEarned}', _palette.prismGold);
+    if (outcome.objectiveCompleted) {
+      widget.audio.playCue(PrismSoundCue.stageClear);
+    }
     _persistHighScores();
     setState(() {
       _novaMode = false;
@@ -422,18 +519,28 @@ class _PrismGameScreenState extends State<PrismGameScreen>
   @override
   Widget build(BuildContext context) {
     final p = _palette;
-    final draggingPiece = _draggingTrayIdx != null
-        ? _engine.tray[_draggingTrayIdx!]
-        : null;
+    final draggingPiece = _pieceForSlot(_draggingSlot);
 
     return Theme(
       data: p.toThemeData(),
       child: Scaffold(
         backgroundColor: p.background,
-        body: SafeArea(
-          child: Stack(
-            children: <Widget>[
-              Padding(
+        body: Stack(
+          children: <Widget>[
+            // Radiant animated "cıvıl cıvıl" gradient + ambient bubbles/sparkles/petals!
+            Positioned.fill(
+              child: AnimatedBuilder(
+                animation: _ticker,
+                builder: (context, _) => CustomPaint(
+                  painter: AmbientBackdropPainter(
+                    palette: p,
+                    phase: _save.reducedMotion ? 0.25 : _ticker.value,
+                  ),
+                ),
+              ),
+            ),
+            SafeArea(
+              child: Padding(
                 padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -452,16 +559,16 @@ class _PrismGameScreenState extends State<PrismGameScreen>
                     const SizedBox(height: 8),
                     Expanded(child: _buildBoardArea(p)),
                     const SizedBox(height: 10),
-                    _buildTray(p),
+                    _buildTrayWithAnvil(p),
                     const SizedBox(height: 8),
                     _buildFooter(p),
                   ],
                 ),
               ),
-              if (draggingPiece != null && _dragGlobalPos != null)
-                _buildFloatingDragPiece(p, draggingPiece, _dragGlobalPos!),
-            ],
-          ),
+            ),
+            if (draggingPiece != null && _dragGlobalPos != null)
+              _buildFloatingDragPiece(p, draggingPiece, _dragGlobalPos!),
+          ],
         ),
       ),
     );
@@ -474,12 +581,20 @@ class _PrismGameScreenState extends State<PrismGameScreen>
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: p.surface,
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: <Color>[Color(0xFF2B1463), Color(0xFFDF248A)],
+            ),
             borderRadius: BorderRadius.circular(11),
-            border: Border.all(color: p.accent.withValues(alpha: 0.45)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.45)),
           ),
           alignment: Alignment.center,
-          child: Icon(Icons.diamond_rounded, color: p.accent, size: 20),
+          child: const Icon(
+            Icons.diamond_rounded,
+            color: Color(0xFFA5FAFF),
+            size: 20,
+          ),
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -499,7 +614,11 @@ class _PrismGameScreenState extends State<PrismGameScreen>
                 PrismStrings.appSubtitle.resolve(_locale),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: p.mutedInk, fontSize: 11),
+                style: TextStyle(
+                  color: p.mutedInk,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ),
@@ -581,7 +700,7 @@ class _PrismGameScreenState extends State<PrismGameScreen>
                   border: Border.all(
                     color: _engine.mode == m
                         ? p.accent
-                        : p.ink.withValues(alpha: 0.12),
+                        : p.ink.withValues(alpha: 0.14),
                   ),
                 ),
                 alignment: Alignment.center,
@@ -590,7 +709,7 @@ class _PrismGameScreenState extends State<PrismGameScreen>
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: _engine.mode == m ? p.background : p.ink,
+                    color: _engine.mode == m ? p.accentInk : p.ink,
                     fontSize: 11.5,
                     fontWeight: FontWeight.w800,
                   ),
@@ -634,7 +753,7 @@ class _PrismGameScreenState extends State<PrismGameScreen>
             decoration: BoxDecoration(
               color: p.surface,
               borderRadius: BorderRadius.circular(13),
-              border: Border.all(color: p.ink.withValues(alpha: 0.12)),
+              border: Border.all(color: p.ink.withValues(alpha: 0.14)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -656,8 +775,8 @@ class _PrismGameScreenState extends State<PrismGameScreen>
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               color: i < _engine.streakTurnsLeft
-                                  ? p.prismGold
-                                  : p.ink.withValues(alpha: 0.16),
+                                  ? p.accent
+                                  : p.ink.withValues(alpha: 0.18),
                             ),
                           ),
                       ],
@@ -668,7 +787,7 @@ class _PrismGameScreenState extends State<PrismGameScreen>
                 Text(
                   '×${math.max(1, _engine.streak)}',
                   style: TextStyle(
-                    color: _engine.streak >= 2 ? p.prismGold : p.ink,
+                    color: _engine.streak >= 2 ? p.accent : p.ink,
                     fontSize: 18,
                     fontWeight: FontWeight.w900,
                   ),
@@ -690,7 +809,7 @@ class _PrismGameScreenState extends State<PrismGameScreen>
         decoration: BoxDecoration(
           color: p.surface,
           borderRadius: BorderRadius.circular(13),
-          border: Border.all(color: p.ink.withValues(alpha: 0.12)),
+          border: Border.all(color: p.ink.withValues(alpha: 0.14)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -771,7 +890,7 @@ class _PrismGameScreenState extends State<PrismGameScreen>
       decoration: BoxDecoration(
         color: p.surface,
         borderRadius: BorderRadius.circular(13),
-        border: Border.all(color: p.ink.withValues(alpha: 0.12)),
+        border: Border.all(color: p.ink.withValues(alpha: 0.14)),
       ),
       child: Row(
         children: <Widget>[
@@ -788,7 +907,7 @@ class _PrismGameScreenState extends State<PrismGameScreen>
               child: Text(
                 pillText,
                 style: TextStyle(
-                  color: p.background,
+                  color: p.accentInk,
                   fontSize: 11,
                   fontWeight: FontWeight.w900,
                 ),
@@ -810,14 +929,14 @@ class _PrismGameScreenState extends State<PrismGameScreen>
           ),
           const SizedBox(width: 8),
           SizedBox(
-            width: 56,
+            width: 54,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
                 value: progress,
                 minHeight: 6,
-                backgroundColor: p.background,
-                valueColor: AlwaysStoppedAnimation<Color>(p.prismGold),
+                backgroundColor: p.ink.withValues(alpha: 0.12),
+                valueColor: AlwaysStoppedAnimation<Color>(p.accent),
               ),
             ),
           ),
@@ -836,9 +955,11 @@ class _PrismGameScreenState extends State<PrismGameScreen>
   }
 
   Widget _buildEnergyBar(PrismPalette p) {
+    final hasAnyPiece =
+        _engine.tray.any((t) => t != null) || _engine.forgedPiece != null;
     final canRotate =
         _engine.energy >= PrismEngine.rotateEnergyCost &&
-        _engine.tray.any((t) => t != null) &&
+        hasAnyPiece &&
         !_engine.isGameOver &&
         !_engine.isVictory;
     final canNova =
@@ -851,7 +972,7 @@ class _PrismGameScreenState extends State<PrismGameScreen>
       decoration: BoxDecoration(
         color: p.surface,
         borderRadius: BorderRadius.circular(13),
-        border: Border.all(color: p.ink.withValues(alpha: 0.12)),
+        border: Border.all(color: p.ink.withValues(alpha: 0.14)),
       ),
       child: Row(
         children: <Widget>[
@@ -882,7 +1003,7 @@ class _PrismGameScreenState extends State<PrismGameScreen>
                   child: LinearProgressIndicator(
                     value: (_engine.energy / 100.0).clamp(0.0, 1.0).toDouble(),
                     minHeight: 7,
-                    backgroundColor: p.background,
+                    backgroundColor: p.ink.withValues(alpha: 0.12),
                     valueColor: AlwaysStoppedAnimation<Color>(
                       canNova ? p.prismGold : p.accent,
                     ),
@@ -911,7 +1032,7 @@ class _PrismGameScreenState extends State<PrismGameScreen>
             highlight: _novaMode || canNova,
             onTap: () => setState(() {
               _novaMode = !_novaMode;
-              _selectedTrayIdx = -1;
+              _selectedSlot = null;
               _activePreview = null;
             }),
           ),
@@ -934,28 +1055,26 @@ class _PrismGameScreenState extends State<PrismGameScreen>
       borderRadius: BorderRadius.circular(10),
       onTap: enabled ? onTap : null,
       child: Opacity(
-        opacity: enabled ? 1.0 : 0.4,
+        opacity: enabled ? 1.0 : 0.42,
         child: Container(
           height: 34,
           padding: const EdgeInsets.symmetric(horizontal: 8),
           decoration: BoxDecoration(
-            color: highlight
-                ? p.prismGold.withValues(alpha: 0.2)
-                : p.background,
+            color: highlight ? p.accent : p.surfaceElevated,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: highlight ? p.prismGold : p.ink.withValues(alpha: 0.16),
+              color: highlight ? p.accent : p.ink.withValues(alpha: 0.16),
             ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              Icon(icon, size: 15, color: highlight ? p.prismGold : p.ink),
+              Icon(icon, size: 15, color: highlight ? p.accentInk : p.ink),
               const SizedBox(width: 4),
               Text(
                 label,
                 style: TextStyle(
-                  color: highlight ? p.prismGold : p.ink,
+                  color: highlight ? p.accentInk : p.ink,
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
                 ),
@@ -968,9 +1087,7 @@ class _PrismGameScreenState extends State<PrismGameScreen>
   }
 
   Widget _buildBoardArea(PrismPalette p) {
-    final hoverPiece = _draggingTrayIdx != null
-        ? _engine.tray[_draggingTrayIdx!]
-        : (_selectedTrayIdx >= 0 ? _engine.tray[_selectedTrayIdx] : null);
+    final hoverPiece = _pieceForSlot(_draggingSlot ?? _selectedSlot);
 
     return Column(
       children: <Widget>[
@@ -979,9 +1096,9 @@ class _PrismGameScreenState extends State<PrismGameScreen>
             margin: const EdgeInsets.only(bottom: 6),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: p.prismGold.withValues(alpha: 0.16),
+              color: p.surface,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: p.prismGold.withValues(alpha: 0.6)),
+              border: Border.all(color: p.accent, width: 1.6),
             ),
             child: Row(
               children: <Widget>[
@@ -1000,7 +1117,7 @@ class _PrismGameScreenState extends State<PrismGameScreen>
                   child: Text(
                     PrismStrings.cancel.resolve(_locale),
                     style: TextStyle(
-                      color: p.prismGold,
+                      color: p.accent,
                       fontSize: 11,
                       fontWeight: FontWeight.w900,
                     ),
@@ -1024,16 +1141,16 @@ class _PrismGameScreenState extends State<PrismGameScreen>
                         if (cell != null) _handleNovaTap(cell);
                         return;
                       }
-                      if (_selectedTrayIdx >= 0 &&
-                          _engine.tray[_selectedTrayIdx] != null) {
-                        final piece = _engine.tray[_selectedTrayIdx]!;
+                      final sel = _selectedSlot;
+                      final piece = _pieceForSlot(sel);
+                      if (sel != null && piece != null) {
                         final anchor = _globalToBoardAnchor(
                           details.globalPosition,
                           piece,
                           applyTouchLift: false,
                         );
                         if (anchor != null) {
-                          _commitPlacement(_selectedTrayIdx, anchor);
+                          _commitPlacement(sel, anchor);
                         }
                       }
                     },
@@ -1070,11 +1187,11 @@ class _PrismGameScreenState extends State<PrismGameScreen>
                               vertical: 6,
                             ),
                             decoration: BoxDecoration(
-                              color: p.background.withValues(alpha: 0.92),
+                              color: p.boardBackground.withValues(alpha: 0.94),
                               borderRadius: BorderRadius.circular(18),
                               border: Border.all(
                                 color: _kineticColor,
-                                width: 1.6,
+                                width: 1.8,
                               ),
                             ),
                             child: Text(
@@ -1130,8 +1247,8 @@ class _PrismGameScreenState extends State<PrismGameScreen>
     return Positioned.fill(
       child: Container(
         decoration: BoxDecoration(
-          color: p.background.withValues(alpha: 0.86),
-          borderRadius: BorderRadius.circular(16),
+          color: p.boardBackground.withValues(alpha: 0.88),
+          borderRadius: BorderRadius.circular(18),
         ),
         padding: const EdgeInsets.all(20),
         child: Center(
@@ -1140,14 +1257,14 @@ class _PrismGameScreenState extends State<PrismGameScreen>
             decoration: BoxDecoration(
               color: p.surface,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: p.accent.withValues(alpha: 0.5)),
+              border: Border.all(color: p.accent, width: 1.8),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
                 Icon(
                   isWin ? Icons.auto_awesome_rounded : Icons.refresh_rounded,
-                  color: isWin ? p.prismGold : p.accent,
+                  color: p.accent,
                   size: 36,
                 ),
                 const SizedBox(height: 8),
@@ -1173,7 +1290,7 @@ class _PrismGameScreenState extends State<PrismGameScreen>
                     key: const ValueKey<String>('overlay_action_button'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: p.accent,
-                      foregroundColor: p.background,
+                      foregroundColor: p.accentInk,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -1205,15 +1322,24 @@ class _PrismGameScreenState extends State<PrismGameScreen>
     );
   }
 
-  Widget _buildTray(PrismPalette p) {
+  /// 3 Tray Slots + Golden Divider + 4th Golden Prism Anvil Slot (0px extra height!).
+  Widget _buildTrayWithAnvil(PrismPalette p) {
     return SizedBox(
       height: 92,
       child: Row(
         children: <Widget>[
           for (var i = 0; i < 3; i++) ...<Widget>[
-            Expanded(child: _buildTraySlot(p, i)),
-            if (i < 2) const SizedBox(width: 8),
+            Expanded(flex: 10, child: _buildTraySlot(p, i)),
+            const SizedBox(width: 6),
           ],
+          Container(
+            width: 1.5,
+            height: 64,
+            margin: const EdgeInsets.symmetric(horizontal: 2),
+            color: p.ink.withValues(alpha: 0.16),
+          ),
+          const SizedBox(width: 4),
+          Expanded(flex: 11, child: _buildAnvilSlot(p)),
         ],
       ),
     );
@@ -1221,8 +1347,8 @@ class _PrismGameScreenState extends State<PrismGameScreen>
 
   Widget _buildTraySlot(PrismPalette p, int index) {
     final piece = _engine.tray[index];
-    final selected = _selectedTrayIdx == index && piece != null;
-    final isDragging = _draggingTrayIdx == index;
+    final selected = _selectedSlot == index && piece != null;
+    final isDragging = _draggingSlot == index;
     final fits = piece != null && _engine.canPlaceAnywhere(piece);
 
     return Listener(
@@ -1231,13 +1357,13 @@ class _PrismGameScreenState extends State<PrismGameScreen>
         widget.audio.playCue(PrismSoundCue.pickup);
         setState(() {
           _novaMode = false;
-          _draggingTrayIdx = index;
+          _draggingSlot = index;
           _dragGlobalPos = event.position;
           _activePreview = null;
         });
       },
       onPointerMove: (event) {
-        if (_draggingTrayIdx != index || piece == null) return;
+        if (_draggingSlot != index || piece == null) return;
         final anchor = _globalToBoardAnchor(
           event.position,
           piece,
@@ -1250,11 +1376,11 @@ class _PrismGameScreenState extends State<PrismGameScreen>
               : null;
         });
       },
-      onPointerUp: (event) {
-        if (_draggingTrayIdx != index || piece == null) return;
+      onPointerUp: (_) {
+        if (_draggingSlot != index || piece == null) return;
         final preview = _activePreview;
         setState(() {
-          _draggingTrayIdx = null;
+          _draggingSlot = null;
           _dragGlobalPos = null;
           _activePreview = null;
         });
@@ -1262,14 +1388,14 @@ class _PrismGameScreenState extends State<PrismGameScreen>
           _commitPlacement(index, preview.anchor);
         } else {
           setState(() {
-            _selectedTrayIdx = _selectedTrayIdx == index ? -1 : index;
+            _selectedSlot = _selectedSlot == index ? null : index;
           });
         }
       },
       onPointerCancel: (_) {
-        if (_draggingTrayIdx != index) return;
+        if (_draggingSlot != index) return;
         setState(() {
-          _draggingTrayIdx = null;
+          _draggingSlot = null;
           _dragGlobalPos = null;
           _activePreview = null;
         });
@@ -1279,24 +1405,173 @@ class _PrismGameScreenState extends State<PrismGameScreen>
         duration: const Duration(milliseconds: 150),
         decoration: BoxDecoration(
           color: p.surface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(15),
           border: Border.all(
             color: selected
                 ? p.accent
                 : (piece != null && !fits)
-                ? const Color(0x8CF43F5E)
+                ? const Color(0xCCF43F5E)
                 : p.ink.withValues(alpha: 0.14),
-            width: selected ? 2.2 : 1.2,
+            width: selected ? 2.4 : 1.2,
           ),
         ),
         child: piece == null
             ? const SizedBox.shrink()
             : Opacity(
                 opacity: isDragging ? 0.25 : 1.0,
-                child: CustomPaint(
-                  painter: PieceMiniPainter(piece: piece, palette: p),
+                child: AnimatedBuilder(
+                  animation: _ticker,
+                  builder: (context, _) => CustomPaint(
+                    painter: PieceMiniPainter(
+                      piece: piece,
+                      palette: p,
+                      phase: _save.reducedMotion ? 0.25 : _ticker.value,
+                    ),
+                  ),
                 ),
               ),
+      ),
+    );
+  }
+
+  /// Dedicated Golden Prism Anvil (Prizma Örsü): stash/swap 1x per turn,
+  /// 3 placements temper the held piece into 🌈 Wildcard + ★ Prism Core!
+  Widget _buildAnvilSlot(PrismPalette p) {
+    final piece = _engine.forgedPiece;
+    final selected = _selectedSlot == _anvilSlotIndex && piece != null;
+    final isDragging = _draggingSlot == _anvilSlotIndex;
+    final tempered = _engine.isForgeTempered;
+
+    return Listener(
+      onPointerDown: (event) {
+        if (_engine.isGameOver || _engine.isVictory) return;
+        if (piece == null ||
+            (_selectedSlot != null &&
+                _selectedSlot! >= 0 &&
+                !_engine.forgeUsedThisTurn)) {
+          _handleAnvilTap();
+          return;
+        }
+        widget.audio.playCue(PrismSoundCue.pickup);
+        setState(() {
+          _novaMode = false;
+          _draggingSlot = _anvilSlotIndex;
+          _dragGlobalPos = event.position;
+          _activePreview = null;
+        });
+      },
+      onPointerMove: (event) {
+        if (_draggingSlot != _anvilSlotIndex || piece == null) return;
+        final anchor = _globalToBoardAnchor(
+          event.position,
+          piece,
+          applyTouchLift: true,
+        );
+        setState(() {
+          _dragGlobalPos = event.position;
+          _activePreview = anchor != null
+              ? _engine.previewPlacement(piece, anchor.x, anchor.y)
+              : null;
+        });
+      },
+      onPointerUp: (_) {
+        if (_draggingSlot != _anvilSlotIndex || piece == null) return;
+        final preview = _activePreview;
+        setState(() {
+          _draggingSlot = null;
+          _dragGlobalPos = null;
+          _activePreview = null;
+        });
+        if (preview != null) {
+          _commitPlacement(_anvilSlotIndex, preview.anchor);
+        } else {
+          setState(() {
+            _selectedSlot = _selectedSlot == _anvilSlotIndex
+                ? null
+                : _anvilSlotIndex;
+          });
+        }
+      },
+      onPointerCancel: (_) {
+        if (_draggingSlot != _anvilSlotIndex) return;
+        setState(() {
+          _draggingSlot = null;
+          _dragGlobalPos = null;
+          _activePreview = null;
+        });
+      },
+      child: AnimatedContainer(
+        key: const ValueKey<String>('anvil_slot'),
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.fromLTRB(4, 4, 4, 4),
+        decoration: BoxDecoration(
+          color: tempered
+              ? p.prismGold.withValues(alpha: 0.25)
+              : p.surfaceElevated,
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(
+            color: selected || tempered
+                ? p.prismGold
+                : p.prismGold.withValues(alpha: 0.65),
+            width: selected || tempered ? 2.4 : 1.6,
+          ),
+        ),
+        child: Column(
+          children: <Widget>[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                Text(
+                  tempered
+                      ? PrismStrings.anvilReady.resolve(_locale)
+                      : PrismStrings.anvilLabel.resolve(_locale),
+                  style: TextStyle(
+                    color: p.ink,
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                for (var i = 0; i < 3; i++)
+                  Container(
+                    width: 5.5,
+                    height: 5.5,
+                    margin: const EdgeInsets.only(left: 2),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: i < _engine.forgeCharge
+                          ? p.accent
+                          : p.ink.withValues(alpha: 0.22),
+                    ),
+                  ),
+              ],
+            ),
+            Expanded(
+              child: piece == null
+                  ? Center(
+                      child: Icon(
+                        Icons.auto_fix_high_rounded,
+                        size: 22,
+                        color: p.mutedInk.withValues(alpha: 0.65),
+                      ),
+                    )
+                  : Opacity(
+                      opacity: isDragging ? 0.25 : 1.0,
+                      child: AnimatedBuilder(
+                        animation: _ticker,
+                        builder: (context, _) => CustomPaint(
+                          size: Size.infinite,
+                          painter: PieceMiniPainter(
+                            piece: piece,
+                            palette: p,
+                            phase: _save.reducedMotion ? 0.25 : _ticker.value,
+                          ),
+                        ),
+                      ),
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1331,6 +1606,7 @@ class _PrismGameScreenState extends State<PrismGameScreen>
             piece: piece,
             palette: p,
             cellSizeOverride: cellSize,
+            phase: _save.reducedMotion ? 0.25 : _ticker.value,
           ),
         ),
       ),
@@ -1346,9 +1622,9 @@ class _PrismGameScreenState extends State<PrismGameScreen>
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: p.mutedInk,
+              color: p.ink.withValues(alpha: 0.78),
               fontSize: 10.5,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ),

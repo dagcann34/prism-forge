@@ -1,7 +1,8 @@
 /// Core immutable data models for PRISM FORGE (Prizma Döküm).
 ///
 /// Pure Dart with zero Flutter dependencies so the entire tactical rules engine
-/// can be deterministically verified offline in milliseconds.
+/// (Resonance, Prism Cores, Optical Chain-Refraction, 2x2 Prism Synthesis,
+/// Prism Anvil Tempering, 2-Hit Frost, Locked Keystones) can be verified offline.
 library;
 
 /// Supported bilingual locales.
@@ -22,8 +23,20 @@ enum GameMode {
   blitz,
 }
 
-/// Curated visual art palettes.
-enum PrismThemeId { obsidian, ceramic, aurora, atelier }
+/// Curated vibrant visual art palettes.
+enum PrismThemeId {
+  /// Tropik Mercan / Coral Lagoon (sunlit turquoise & coral)
+  ceramic,
+
+  /// Şeker Vitray / Candy Prism (joyful stained-glass candy)
+  atelier,
+
+  /// Bahar Bahçesi / Blossom Garden (blooming spring meadow)
+  aurora,
+
+  /// Karnaval Neon / Neon Carnival (electric festival twilight)
+  obsidian,
+}
 
 /// Localized string pair (Turkish + English).
 class LocalizedText {
@@ -53,6 +66,21 @@ class GridPoint {
   String toString() => '($x,$y)';
 }
 
+/// A cardinal optical laser ricochet link between two aligned ★ Prism Cores.
+class RefractionBeam {
+  const RefractionBeam({
+    required this.from,
+    required this.to,
+    required this.depth,
+  });
+
+  final GridPoint from;
+  final GridPoint to;
+
+  /// Cascade hop depth (1 = first jump, 2 = second ricochet, etc.).
+  final int depth;
+}
+
 /// A single occupied tile on the 8x8 forge grid.
 class BoardCell {
   const BoardCell({
@@ -60,42 +88,50 @@ class BoardCell {
     this.isPrismCore = false,
     this.frostHits = 0,
     this.isLocked = false,
+    this.isWildcard = false,
   });
 
   /// Palette color index (0..5) participating in 4+ Harmonic Color Resonance.
   final int colorIndex;
 
-  /// ★ Prism Core: clearing this cell unleashes a 2-cell perpendicular Cross-Wave.
+  /// ★ Prism Core: clearing this cell unleashes Cross-Wave + Chain-Refraction.
   final bool isPrismCore;
 
   /// ❄ Frosted Crystal: 1 means encased in frost (hit 1 cracks it; hit 2 clears).
   final int frostHits;
 
   /// 🔒 Locked Keystone: immune to ordinary line clears; breaks via Resonance,
-  /// Prism Core Cross-Wave, or 3x3 Quantum Nova.
+  /// Prism Core Cross-Wave / Optical Beam, or 3x3 Quantum Nova.
   final bool isLocked;
+
+  /// 🌈 Tempered Rainbow Wildcard Glass (forged in the Prism Anvil): matches
+  /// ALL 6 colors simultaneously for 4+ Resonance and 2x2 Prism Synthesis.
+  final bool isWildcard;
 
   BoardCell copyWith({
     int? colorIndex,
     bool? isPrismCore,
     int? frostHits,
     bool? isLocked,
+    bool? isWildcard,
   }) {
     return BoardCell(
       colorIndex: colorIndex ?? this.colorIndex,
       isPrismCore: isPrismCore ?? this.isPrismCore,
       frostHits: frostHits ?? this.frostHits,
       isLocked: isLocked ?? this.isLocked,
+      isWildcard: isWildcard ?? this.isWildcard,
     );
   }
 }
 
-/// A polyomino piece sitting in the 3-slot tray.
+/// A polyomino piece sitting in the 3-slot tray or the Prism Anvil slot.
 class PrismPiece {
   const PrismPiece({
     required this.cells,
     required this.colorIndex,
     this.prismCellIndex = -1,
+    this.isWildcard = false,
   });
 
   final List<GridPoint> cells;
@@ -103,6 +139,9 @@ class PrismPiece {
 
   /// Index inside [cells] carrying a ★ Prism Core, or -1 if none.
   final int prismCellIndex;
+
+  /// True once tempered for 3 turns in the Prism Anvil (iridescent wildcard).
+  final bool isWildcard;
 
   int get cols {
     var maxX = 0;
@@ -124,11 +163,13 @@ class PrismPiece {
     List<GridPoint>? cells,
     int? colorIndex,
     int? prismCellIndex,
+    bool? isWildcard,
   }) {
     return PrismPiece(
       cells: cells ?? this.cells,
       colorIndex: colorIndex ?? this.colorIndex,
       prismCellIndex: prismCellIndex ?? this.prismCellIndex,
+      isWildcard: isWildcard ?? this.isWildcard,
     );
   }
 }
@@ -143,6 +184,9 @@ class PlacementPreview {
     required this.triggeredPrisms,
     required this.frostToCrack,
     required this.locksToBreak,
+    this.refractionBeams = const <RefractionBeam>[],
+    this.synthesizedCores = const <GridPoint>[],
+    this.synthesisQuadOrigins = const <GridPoint>[],
   });
 
   final GridPoint anchor;
@@ -152,8 +196,13 @@ class PlacementPreview {
   final List<GridPoint> triggeredPrisms;
   final List<GridPoint> frostToCrack;
   final List<GridPoint> locksToBreak;
+  final List<RefractionBeam> refractionBeams;
+  final List<GridPoint> synthesizedCores;
+  final List<GridPoint> synthesisQuadOrigins;
 
   bool get hasLineClear => rowsToClear.isNotEmpty || colsToClear.isNotEmpty;
+  bool get hasSynthesis => synthesizedCores.isNotEmpty;
+  bool get hasRefraction => refractionBeams.isNotEmpty;
 }
 
 /// Detailed result of placing a piece or unleashing Quantum Nova.
@@ -166,6 +215,9 @@ class MoveOutcome {
     this.clearedCols = const <int>[],
     this.triggeredResonance = false,
     this.triggeredPrisms = const <GridPoint>[],
+    this.refractionBeams = const <RefractionBeam>[],
+    this.synthesizedCores = const <GridPoint>[],
+    this.forgeTempered = false,
     this.crackedFrostCount = 0,
     this.brokenLockCount = 0,
     this.clearedCells = const <GridPoint>[],
@@ -182,6 +234,9 @@ class MoveOutcome {
   final List<int> clearedCols;
   final bool triggeredResonance;
   final List<GridPoint> triggeredPrisms;
+  final List<RefractionBeam> refractionBeams;
+  final List<GridPoint> synthesizedCores;
+  final bool forgeTempered;
   final int crackedFrostCount;
   final int brokenLockCount;
   final List<GridPoint> clearedCells;

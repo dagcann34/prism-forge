@@ -1,15 +1,19 @@
 /// Pure-Dart tactical rules engine for PRISM FORGE (Prizma Döküm).
 ///
-/// Implements all signature next-gen mechanics:
-/// 1. 4+ Same-Color Harmonic Resonance (x1.5 score + breaks Locked Keystones)
-/// 2. ★ Prism Core 2-cell perpendicular Cross-Wave Shock Blast
-/// 3. ❄ 2-Hit Frosted Crystals (hit 1 cracks frost -> hit 2 clears)
-/// 4. 🔒 Locked Keystones (shattered by Resonance, Cross-Wave, or Quantum Nova)
-/// 5. Tactical Overdrive Energy: 90° Rotate (35%) & 3x3 Quantum Nova (100%)
-/// 6. Fair-Tray Director: prevents impossible 3-piece trays when a fit exists
-/// 7. 4 Game Modes: Endless, 24-Stage Quest, Deterministic Daily, 90s Blitz
+/// Closed "Forge -> Synthesize -> Refract" signature loop:
+/// 1. Prism Anvil (Prizma Örsü): Free stash/swap once per turn; 3 placements
+///    temper the stashed piece into Iridescent Rainbow Wildcard Glass + ★ Core.
+/// 2. 2x2 Prism Synthesis (Kristal Döküm): Interlocking same-color blocks into
+///    a 2x2 quad forges a brand-new ★ Prism Core on the board & cracks Frost.
+/// 3. Optical Chain-Refraction (Kırılım Zinciri): Detonating a ★ Core fires
+///    cardinal laser beams to aligned ★ Cores across the 8x8 board, shattering
+///    🔒 Locks & cracking ❄ Frost along every beam hop.
+/// 4. 4+ Harmonic Color Resonance (x1.5 score + shatters Locked Keystones).
+/// 5. Tactical Overdrive Energy: 90° Rotate (35%) & 3x3 Quantum Nova (100%).
+/// 6. Fair-Tray Director + 4 Modes (Endless, 24-Stage Quest, Daily, 90s Blitz).
 library;
 
+import 'dart:collection';
 import 'dart:math' as math;
 
 import 'models.dart';
@@ -27,6 +31,7 @@ class PrismEngine {
   static const int rotateEnergyCost = 35;
   static const int novaEnergyCost = 100;
   static const int blitzInitialSeconds = 90;
+  static const int forgeMaxCharge = 3;
 
   static const List<GridPoint> _crossOffsets = <GridPoint>[
     GridPoint(1, 0),
@@ -39,9 +44,21 @@ class PrismEngine {
     GridPoint(0, -2),
   ];
 
+  static const List<GridPoint> _cardinalDirs = <GridPoint>[
+    GridPoint(1, 0),
+    GridPoint(-1, 0),
+    GridPoint(0, 1),
+    GridPoint(0, -1),
+  ];
+
   late SeededRandom _rng;
   late List<List<BoardCell?>> _grid;
   final List<PrismPiece?> _tray = <PrismPiece?>[null, null, null];
+
+  /// Dedicated Prism Anvil (Forge Slot) state.
+  PrismPiece? _forgedPiece;
+  int _forgeCharge = 0;
+  bool _forgeUsedThisTurn = false;
 
   GameMode mode = GameMode.quest;
   int questStageNumber = 1;
@@ -65,6 +82,10 @@ class PrismEngine {
 
   List<List<BoardCell?>> get grid => _grid;
   List<PrismPiece?> get tray => List<PrismPiece?>.unmodifiable(_tray);
+  PrismPiece? get forgedPiece => _forgedPiece;
+  int get forgeCharge => _forgeCharge;
+  bool get forgeUsedThisTurn => _forgeUsedThisTurn;
+  bool get isForgeTempered => _forgedPiece != null && _forgedPiece!.isWildcard;
 
   int get totalTargets => targetCores + targetFrost + targetLocks;
   int get totalCollected => collectedCores + collectedFrost + collectedLocks;
@@ -108,6 +129,9 @@ class PrismEngine {
     blitzSecondsLeft = blitzInitialSeconds.toDouble();
     isGameOver = false;
     isVictory = false;
+    _forgedPiece = null;
+    _forgeCharge = 0;
+    _forgeUsedThisTurn = false;
 
     if (newMode == GameMode.quest) {
       questStageNumber = (stageNumber ?? questStageNumber).clamp(
@@ -188,7 +212,6 @@ class PrismEngine {
       coords.add(GridPoint(x, y));
     }
 
-    // Fisher-Yates shuffle for special tile assignment.
     for (var i = coords.length - 1; i > 0; i--) {
       final j = _rng.nextInt(i + 1);
       final tmp = coords[i];
@@ -232,15 +255,16 @@ class PrismEngine {
     return false;
   }
 
-  /// Returns true if the player can still act (direct placement, 35% rotate
-  /// into a legal fit, or 100% Quantum Nova).
+  /// Returns true if the player can still act (tray placement, forged piece
+  /// placement, 35% rotate into a fit, or 100% Quantum Nova).
   bool hasAnyValidMove() {
     for (final p in _tray) {
       if (p != null && canPlaceAnywhere(p)) return true;
     }
+    if (_forgedPiece != null && canPlaceAnywhere(_forgedPiece!)) return true;
     if (energy >= novaEnergyCost) return true;
     if (energy >= rotateEnergyCost) {
-      for (final p in _tray) {
+      for (final p in <PrismPiece?>[..._tray, _forgedPiece]) {
         if (p == null) continue;
         var cells = p.cells;
         for (var r = 0; r < 3; r++) {
@@ -306,10 +330,39 @@ class PrismEngine {
     }
   }
 
-  /// Rotates tray piece at [trayIndex] by 90° clockwise for 35% energy.
+  /// Stashes or swaps tray piece [trayIndex] with the Prism Anvil (0% energy,
+  /// once per board placement). Newly inserted pieces start at 0/3 charge.
+  bool stashOrSwapWithForge(int trayIndex) {
+    if (isGameOver || isVictory || _forgeUsedThisTurn) return false;
+    if (trayIndex < 0 || trayIndex >= 3) return false;
+    final incoming = _tray[trayIndex];
+    if (incoming == null) return false;
+
+    final outgoing = _forgedPiece;
+    _forgedPiece = incoming;
+    _forgeCharge = incoming.isWildcard ? forgeMaxCharge : 0;
+    _tray[trayIndex] = outgoing;
+    _forgeUsedThisTurn = true;
+
+    if (_tray.every((p) => p == null)) {
+      refillTray();
+    }
+    return true;
+  }
+
+  /// Rotates tray piece at [trayIndex] (or the Prism Anvil piece when
+  /// [trayIndex == -1]) by 90° clockwise for 35% energy.
   bool rotateTrayPiece(int trayIndex) {
     if (isGameOver || isVictory) return false;
     if (energy < rotateEnergyCost) return false;
+    if (trayIndex == -1) {
+      if (_forgedPiece == null) return false;
+      _forgedPiece = _forgedPiece!.copyWith(
+        cells: ShapeLibrary.rotateCW(_forgedPiece!.cells),
+      );
+      energy = math.max(0, energy - rotateEnergyCost);
+      return true;
+    }
     if (trayIndex < 0 || trayIndex >= 3) return false;
     final piece = _tray[trayIndex];
     if (piece == null) return false;
@@ -321,7 +374,180 @@ class PrismEngine {
     return true;
   }
 
-  /// Computes full pre-drop preview (lines, Resonance, Cross-Waves, Frost/Locks).
+  static bool _lineHasResonance(Iterable<BoardCell?> cells) {
+    final counts = <int, int>{};
+    var wildcards = 0;
+    var maxColor = 0;
+    for (final cell in cells) {
+      if (cell == null) continue;
+      if (cell.isWildcard) {
+        wildcards++;
+      } else {
+        final next = (counts[cell.colorIndex] ?? 0) + 1;
+        counts[cell.colorIndex] = next;
+        if (next > maxColor) maxColor = next;
+      }
+    }
+    return (maxColor + wildcards) >= 4;
+  }
+
+  /// Scans all 2x2 windows touching [placedCoords] for 2x2 Prism Synthesis.
+  /// Returns synthesized core positions, 2x2 top-left origins, and frost cells
+  /// thermally cracked inside synthesized quads (mutating [board] in-place).
+  static ({
+    List<GridPoint> cores,
+    List<GridPoint> quadOrigins,
+    List<GridPoint> frostCracks,
+  })
+  _apply2x2Synthesis(
+    List<List<BoardCell?>> board,
+    Set<GridPoint> placedCoords,
+  ) {
+    final cores = <GridPoint>[];
+    final origins = <GridPoint>[];
+    final frostCracks = <GridPoint>[];
+
+    for (var y = 0; y < gridSize - 1; y++) {
+      for (var x = 0; x < gridSize - 1; x++) {
+        final pts = <GridPoint>[
+          GridPoint(x, y),
+          GridPoint(x + 1, y),
+          GridPoint(x, y + 1),
+          GridPoint(x + 1, y + 1),
+        ];
+
+        var hasNew = false;
+        var hasExisting = false;
+        var invalid = false;
+        int? commonColor;
+        GridPoint? upgradeTarget;
+
+        for (final pt in pts) {
+          final cell = board[pt.y][pt.x];
+          if (cell == null || cell.isLocked || cell.isPrismCore) {
+            invalid = true;
+            break;
+          }
+          if (placedCoords.contains(pt)) {
+            hasNew = true;
+            upgradeTarget ??= pt;
+          } else {
+            hasExisting = true;
+          }
+          if (!cell.isWildcard) {
+            if (commonColor == null) {
+              commonColor = cell.colorIndex;
+            } else if (commonColor != cell.colorIndex) {
+              invalid = true;
+              break;
+            }
+          }
+        }
+
+        if (invalid || !hasNew || !hasExisting || upgradeTarget == null) {
+          continue;
+        }
+
+        board[upgradeTarget.y][upgradeTarget.x] =
+            board[upgradeTarget.y][upgradeTarget.x]!.copyWith(
+              isPrismCore: true,
+            );
+        cores.add(upgradeTarget);
+        origins.add(GridPoint(x, y));
+
+        for (final pt in pts) {
+          final c = board[pt.y][pt.x]!;
+          if (c.frostHits > 0) {
+            board[pt.y][pt.x] = c.copyWith(frostHits: 0);
+            if (!frostCracks.contains(pt)) frostCracks.add(pt);
+          }
+        }
+      }
+    }
+
+    return (cores: cores, quadOrigins: origins, frostCracks: frostCracks);
+  }
+
+  /// Expands local 2-cell Cross-Wave + cardinal ★→★ Optical Chain-Refraction
+  /// BFS starting from [seedPrisms]. Mutates [hits] (`forceBreak = true`).
+  static ({
+    List<RefractionBeam> beams,
+    List<GridPoint> allTriggeredPrisms,
+    int extraCellsHit,
+  })
+  _expandOpticalChain(
+    List<List<BoardCell?>> board,
+    List<GridPoint> seedPrisms,
+    Map<GridPoint, bool> hits,
+  ) {
+    final visited = <GridPoint>{...seedPrisms};
+    final depthMap = <GridPoint, int>{for (final p in seedPrisms) p: 0};
+    final queue = Queue<GridPoint>()..addAll(seedPrisms);
+    final beams = <RefractionBeam>[];
+    final allPrisms = List<GridPoint>.from(seedPrisms);
+    var extraCells = 0;
+
+    while (queue.isNotEmpty) {
+      final pr = queue.removeFirst();
+      final depth = depthMap[pr]!;
+
+      // 1. Local 2-cell perpendicular Cross-Wave.
+      for (final d in _crossOffsets) {
+        final nx = pr.x + d.x;
+        final ny = pr.y + d.y;
+        if (nx < 0 || ny < 0 || nx >= gridSize || ny >= gridSize) continue;
+        final cell = board[ny][nx];
+        if (cell == null) continue;
+        final pt = GridPoint(nx, ny);
+        if (!hits.containsKey(pt)) extraCells++;
+        hits[pt] = true;
+        if (cell.isPrismCore && visited.add(pt)) {
+          depthMap[pt] = depth + 1;
+          allPrisms.add(pt);
+          queue.add(pt);
+        }
+      }
+
+      // 2. Cardinal Optical Chain-Refraction: find nearest unvisited ★ core.
+      for (final dir in _cardinalDirs) {
+        var cx = pr.x + dir.x;
+        var cy = pr.y + dir.y;
+        final between = <GridPoint>[];
+        while (cx >= 0 && cy >= 0 && cx < gridSize && cy < gridSize) {
+          final pt = GridPoint(cx, cy);
+          final cell = board[cy][cx];
+          if (cell != null && cell.isPrismCore && !visited.contains(pt)) {
+            beams.add(RefractionBeam(from: pr, to: pt, depth: depth + 1));
+            for (final mid in between) {
+              if (board[mid.y][mid.x] != null) {
+                if (!hits.containsKey(mid)) extraCells++;
+                hits[mid] = true;
+              }
+            }
+            if (!hits.containsKey(pt)) extraCells++;
+            hits[pt] = true;
+            visited.add(pt);
+            depthMap[pt] = depth + 1;
+            allPrisms.add(pt);
+            queue.add(pt);
+            break;
+          }
+          between.add(pt);
+          cx += dir.x;
+          cy += dir.y;
+        }
+      }
+    }
+
+    return (
+      beams: beams,
+      allTriggeredPrisms: allPrisms,
+      extraCellsHit: extraCells,
+    );
+  }
+
+  /// Computes full pre-drop preview (2x2 Synthesis, lines, Resonance,
+  /// Cross-Waves, ★→★ Optical Laser Beams, Frost cracks & Lock shatters).
   PlacementPreview? previewPlacement(PrismPiece piece, int gx, int gy) {
     if (!canPlaceAt(piece, gx, gy)) return null;
 
@@ -329,13 +555,19 @@ class PrismEngine {
       gridSize,
       (y) => List<BoardCell?>.from(_grid[y]),
     );
+    final placedCoords = <GridPoint>{};
     for (var i = 0; i < piece.cells.length; i++) {
       final c = piece.cells[i];
-      virtual[gy + c.y][gx + c.x] = BoardCell(
+      final pt = GridPoint(gx + c.x, gy + c.y);
+      placedCoords.add(pt);
+      virtual[pt.y][pt.x] = BoardCell(
         colorIndex: piece.colorIndex,
         isPrismCore: i == piece.prismCellIndex,
+        isWildcard: piece.isWildcard,
       );
     }
+
+    final synth = _apply2x2Synthesis(virtual, placedCoords);
 
     final rows = <int>[];
     final cols = <int>[];
@@ -354,57 +586,42 @@ class PrismEngine {
     }
 
     var resonance = false;
-    bool lineHasResonance(Iterable<BoardCell?> cells) {
-      final counts = <int, int>{};
-      for (final cell in cells) {
-        if (cell == null) continue;
-        final next = (counts[cell.colorIndex] ?? 0) + 1;
-        counts[cell.colorIndex] = next;
-        if (next >= 4) return true;
-      }
-      return false;
-    }
-
-    final lineCoords = <GridPoint>{};
+    final hits = <GridPoint, bool>{};
     for (final y in rows) {
-      if (lineHasResonance(virtual[y])) resonance = true;
+      if (_lineHasResonance(virtual[y])) resonance = true;
       for (var x = 0; x < gridSize; x++) {
-        lineCoords.add(GridPoint(x, y));
+        hits[GridPoint(x, y)] = false;
       }
     }
     for (final x in cols) {
-      final colCells = <BoardCell?>[
+      final col = <BoardCell?>[
         for (var y = 0; y < gridSize; y++) virtual[y][x],
       ];
-      if (lineHasResonance(colCells)) resonance = true;
+      if (_lineHasResonance(col)) resonance = true;
       for (var y = 0; y < gridSize; y++) {
-        lineCoords.add(GridPoint(x, y));
+        hits[GridPoint(x, y)] = false;
+      }
+    }
+    if (resonance) {
+      for (final k in hits.keys.toList()) {
+        hits[k] = true;
       }
     }
 
-    final prisms = <GridPoint>[];
-    final frosts = <GridPoint>[];
+    final seedPrisms = <GridPoint>[
+      for (final pt in hits.keys)
+        if (virtual[pt.y][pt.x]?.isPrismCore == true) pt,
+    ];
+    final chain = _expandOpticalChain(virtual, seedPrisms, hits);
+
+    final frosts = List<GridPoint>.from(synth.frostCracks);
     final locks = <GridPoint>[];
-
-    for (final p in lineCoords) {
-      final cell = virtual[p.y][p.x];
+    for (final entry in hits.entries) {
+      final pt = entry.key;
+      final cell = virtual[pt.y][pt.x];
       if (cell == null) continue;
-      if (cell.isPrismCore) prisms.add(p);
-      if (cell.frostHits > 0) frosts.add(p);
-      if (cell.isLocked && resonance) locks.add(p);
-    }
-
-    for (final pr in prisms) {
-      for (final d in _crossOffsets) {
-        final nx = pr.x + d.x;
-        final ny = pr.y + d.y;
-        if (nx < 0 || ny < 0 || nx >= gridSize || ny >= gridSize) continue;
-        final target = virtual[ny][nx];
-        if (target == null) continue;
-        final pt = GridPoint(nx, ny);
-        if (target.isLocked && !locks.contains(pt)) locks.add(pt);
-        if (target.frostHits > 0 && !frosts.contains(pt)) frosts.add(pt);
-      }
+      if (cell.frostHits > 0 && !frosts.contains(pt)) frosts.add(pt);
+      if (cell.isLocked && entry.value && !locks.contains(pt)) locks.add(pt);
     }
 
     return PlacementPreview(
@@ -412,9 +629,12 @@ class PrismEngine {
       rowsToClear: rows,
       colsToClear: cols,
       triggersResonance: resonance,
-      triggeredPrisms: prisms,
+      triggeredPrisms: chain.allTriggeredPrisms,
       frostToCrack: frosts,
       locksToBreak: locks,
+      refractionBeams: chain.beams,
+      synthesizedCores: synth.cores,
+      synthesisQuadOrigins: synth.quadOrigins,
     );
   }
 
@@ -427,20 +647,65 @@ class PrismEngine {
     if (piece == null || !canPlaceAt(piece, gx, gy)) {
       return const MoveOutcome(placed: false);
     }
+    _tray[trayIndex] = null;
+    return _commitPlacedPiece(piece, gx, gy, fromForge: false);
+  }
 
+  /// Places the piece currently held in the Prism Anvil directly onto the board.
+  MoveOutcome placeForgedPiece(int gx, int gy) {
+    if (isGameOver || isVictory) return const MoveOutcome(placed: false);
+    final piece = _forgedPiece;
+    if (piece == null || !canPlaceAt(piece, gx, gy)) {
+      return const MoveOutcome(placed: false);
+    }
+    _forgedPiece = null;
+    _forgeCharge = 0;
+    return _commitPlacedPiece(piece, gx, gy, fromForge: true);
+  }
+
+  MoveOutcome _commitPlacedPiece(
+    PrismPiece piece,
+    int gx,
+    int gy, {
+    required bool fromForge,
+  }) {
+    final placedCoords = <GridPoint>{};
     for (var i = 0; i < piece.cells.length; i++) {
       final c = piece.cells[i];
-      _grid[gy + c.y][gx + c.x] = BoardCell(
+      final pt = GridPoint(gx + c.x, gy + c.y);
+      placedCoords.add(pt);
+      _grid[pt.y][pt.x] = BoardCell(
         colorIndex: piece.colorIndex,
         isPrismCore: i == piece.prismCellIndex,
+        isWildcard: piece.isWildcard,
       );
     }
-    _tray[trayIndex] = null;
 
     var pointsEarned = piece.cells.length * 10;
+    if (piece.isWildcard) {
+      pointsEarned += 50;
+      energy = math.min(100, energy + 10);
+    }
     score += pointsEarned;
 
-    // Detect full rows & columns.
+    // Step A — 2x2 Prism Synthesis BEFORE line clears (enables forge+detonate!).
+    final synth = _apply2x2Synthesis(_grid, placedCoords);
+    var crackedFrost = synth.frostCracks.length;
+    collectedFrost = math.min(targetFrost, collectedFrost + crackedFrost);
+    var blitzBonus = 0;
+    if (synth.cores.isNotEmpty) {
+      final synthPts = synth.cores.length * 100 + crackedFrost * 40;
+      score += synthPts;
+      pointsEarned += synthPts;
+      energy = math.min(100, energy + synth.cores.length * 12);
+      if (mode == GameMode.blitz) {
+        final add = synth.cores.length * 2;
+        blitzBonus += add;
+        blitzSecondsLeft = math.min(99.0, blitzSecondsLeft + add);
+      }
+    }
+
+    // Step B — Full row & column detection + Wildcard-aware Resonance.
     final fullRows = <int>[];
     final fullCols = <int>[];
     for (var y = 0; y < gridSize; y++) {
@@ -458,30 +723,17 @@ class PrismEngine {
     }
 
     var triggeredResonance = false;
-    final triggeredPrisms = <GridPoint>[];
-    var crackedFrost = 0;
+    var triggeredPrisms = <GridPoint>[];
+    var refractionBeams = <RefractionBeam>[];
     var brokenLocks = 0;
     final clearedCells = <GridPoint>[];
     var allClear = false;
-    var blitzBonus = 0;
 
     final totalLines = fullRows.length + fullCols.length;
     if (totalLines > 0) {
-      bool lineHasResonance(Iterable<BoardCell?> cells) {
-        final counts = <int, int>{};
-        for (final cell in cells) {
-          if (cell == null) continue;
-          final next = (counts[cell.colorIndex] ?? 0) + 1;
-          counts[cell.colorIndex] = next;
-          if (next >= 4) return true;
-        }
-        return false;
-      }
-
-      // Map of coordinates hit -> whether forceBreak (breaks Locked Keystones).
       final hits = <GridPoint, bool>{};
       for (final y in fullRows) {
-        if (lineHasResonance(_grid[y])) triggeredResonance = true;
+        if (_lineHasResonance(_grid[y])) triggeredResonance = true;
         for (var x = 0; x < gridSize; x++) {
           hits[GridPoint(x, y)] = false;
         }
@@ -490,7 +742,7 @@ class PrismEngine {
         final col = <BoardCell?>[
           for (var y = 0; y < gridSize; y++) _grid[y][x],
         ];
-        if (lineHasResonance(col)) triggeredResonance = true;
+        if (_lineHasResonance(col)) triggeredResonance = true;
         for (var y = 0; y < gridSize; y++) {
           hits[GridPoint(x, y)] = false;
         }
@@ -502,28 +754,17 @@ class PrismEngine {
         }
       }
 
-      // Identify Prism Cores inside cleared lines and expand 2-cell Cross-Wave.
-      for (final pt in hits.keys.toList()) {
-        final cell = _grid[pt.y][pt.x];
-        if (cell != null && cell.isPrismCore) {
-          triggeredPrisms.add(pt);
-        }
-      }
+      // Step C — Cross-Wave + Optical Chain-Refraction BFS.
+      final seedPrisms = <GridPoint>[
+        for (final pt in hits.keys)
+          if (_grid[pt.y][pt.x]?.isPrismCore == true) pt,
+      ];
+      final chain = _expandOpticalChain(_grid, seedPrisms, hits);
+      triggeredPrisms = chain.allTriggeredPrisms;
+      refractionBeams = chain.beams;
 
-      var crossExtra = 0;
-      for (final pr in triggeredPrisms) {
-        for (final d in _crossOffsets) {
-          final nx = pr.x + d.x;
-          final ny = pr.y + d.y;
-          if (nx < 0 || ny < 0 || nx >= gridSize || ny >= gridSize) continue;
-          if (_grid[ny][nx] == null) continue;
-          final pt = GridPoint(nx, ny);
-          if (!hits.containsKey(pt)) crossExtra++;
-          hits[pt] = true;
-        }
-      }
-
-      // Apply hits respecting Locked Keystones & 2-Hit Frosted Crystals.
+      // Step D — Apply hits respecting Locked Keystones & 2-Hit Frost.
+      var lineFrostCracked = 0;
       for (final entry in hits.entries) {
         final pt = entry.key;
         final forceBreak = entry.value;
@@ -541,6 +782,7 @@ class PrismEngine {
         }
 
         if (cell.frostHits > 0) {
+          lineFrostCracked++;
           crackedFrost++;
           collectedFrost = math.min(targetFrost, collectedFrost + 1);
           _grid[pt.y][pt.x] = cell.copyWith(frostHits: 0);
@@ -561,19 +803,29 @@ class PrismEngine {
         energy +
             totalLines * 18 +
             (triggeredResonance ? 15 : 0) +
-            triggeredPrisms.length * 14,
+            seedPrisms.length * 14 +
+            refractionBeams.length * 10,
       );
 
       if (mode == GameMode.blitz) {
-        blitzBonus = totalLines * 3 + (triggeredResonance ? 5 : 0);
-        blitzSecondsLeft = math.min(99.0, blitzSecondsLeft + blitzBonus);
+        final add =
+            totalLines * 3 +
+            (triggeredResonance ? 5 : 0) +
+            refractionBeams.length * 2;
+        blitzBonus += add;
+        blitzSecondsLeft = math.min(99.0, blitzSecondsLeft + add);
       }
 
+      final beamPts = refractionBeams.fold<int>(
+        0,
+        (sum, b) => sum + 120 * b.depth,
+      );
       var linePts =
           totalLines * totalLines * 100 * streak +
-          crossExtra * 35 +
+          chain.extraCellsHit * 35 +
+          beamPts +
           brokenLocks * 80 +
-          crackedFrost * 40;
+          lineFrostCracked * 40;
       if (triggeredResonance) {
         linePts = (linePts * 1.5).round();
       }
@@ -593,6 +845,23 @@ class PrismEngine {
       energy = math.min(100, energy + 3);
     }
 
+    // Step E — Prism Anvil 3-Turn Tempering Progression!
+    _forgeUsedThisTurn = false;
+    var forgeTempered = false;
+    if (!fromForge && _forgedPiece != null && _forgeCharge < forgeMaxCharge) {
+      _forgeCharge++;
+      if (_forgeCharge >= forgeMaxCharge && !_forgedPiece!.isWildcard) {
+        _forgedPiece = _forgedPiece!.copyWith(
+          isWildcard: true,
+          prismCellIndex: _forgedPiece!.prismCellIndex >= 0
+              ? _forgedPiece!.prismCellIndex
+              : 0,
+        );
+        forgeTempered = true;
+      }
+    }
+
+    // Step F — Refill tray & check victory / game over.
     if (_tray.every((p) => p == null)) {
       refillTray();
     }
@@ -611,6 +880,9 @@ class PrismEngine {
       clearedCols: fullCols,
       triggeredResonance: triggeredResonance,
       triggeredPrisms: triggeredPrisms,
+      refractionBeams: refractionBeams,
+      synthesizedCores: synth.cores,
+      forgeTempered: forgeTempered,
       crackedFrostCount: crackedFrost,
       brokenLockCount: brokenLocks,
       clearedCells: clearedCells,

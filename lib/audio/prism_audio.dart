@@ -22,13 +22,17 @@ class PrismAudio {
       switch (cue) {
         case PrismSoundCue.pickup:
         case PrismSoundCue.rotate:
+        case PrismSoundCue.hold:
           unawaited(HapticFeedback.selectionClick());
         case PrismSoundCue.place:
         case PrismSoundCue.frostCrack:
           unawaited(HapticFeedback.lightImpact());
         case PrismSoundCue.lockBreak:
         case PrismSoundCue.prismBlast:
+        case PrismSoundCue.prismTempered:
         case PrismSoundCue.nova:
+        case PrismSoundCue.stageClear:
+        case PrismSoundCue.allClear:
           unawaited(HapticFeedback.heavyImpact());
         case PrismSoundCue.fail:
           unawaited(HapticFeedback.vibrate());

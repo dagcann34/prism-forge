@@ -12,8 +12,8 @@ class PrismStrings {
   );
 
   static const LocalizedText appSubtitle = LocalizedText(
-    tr: 'Kristal Rezonans • Buz & Mühür • Taktik Enerji',
-    en: 'Crystal Resonance • Frost & Seal • Tactical Energy',
+    tr: 'Örs • 2×2 Döküm • Kırılım Lazeri • Rezonans',
+    en: 'Anvil • 2×2 Synthesis • Laser Chain • Resonance',
   );
 
   static LocalizedText modeLabel(GameMode mode) {
@@ -43,6 +43,11 @@ class PrismStrings {
     tr: 'Nova 3×3',
     en: 'Nova 3×3',
   );
+  static const LocalizedText anvilLabel = LocalizedText(tr: 'Örs', en: 'Anvil');
+  static const LocalizedText anvilReady = LocalizedText(
+    tr: 'JOKER ★',
+    en: 'WILD ★',
+  );
   static const LocalizedText cancel = LocalizedText(tr: 'İptal', en: 'Cancel');
   static const LocalizedText restart = LocalizedText(
     tr: 'Yenile',
@@ -55,13 +60,13 @@ class PrismStrings {
   );
 
   static const LocalizedText blitzHint = LocalizedText(
-    tr: 'Satır sil +3sn • Rezonans +5sn!',
-    en: 'Line clear +3s • Resonance +5s!',
+    tr: 'Satır +3sn • Rezonans +5sn • Lazer +2sn!',
+    en: 'Line +3s • Resonance +5s • Laser +2s!',
   );
 
   static const LocalizedText legendShort = LocalizedText(
-    tr: '★ Çapraz Şok  •  ❄ 2 Vuruş  •  🔒 Rezonans/Şok/Nova  •  4+ Renk ×1.5',
-    en: '★ Cross-Wave  •  ❄ 2-Hit Ice  •  🔒 Resonance/Wave/Nova  •  4+ Color ×1.5',
+    tr: 'Örs 3 tur=🌈★  •  2×2=★ Döküm  •  ★→★ Lazer  •  4+ Renk ×1.5',
+    en: 'Anvil 3t=🌈★  •  2×2=Forge ★  •  ★→★ Laser  •  4+ Color ×1.5',
   );
 
   static const LocalizedText gameOverTitle = LocalizedText(
@@ -82,8 +87,8 @@ class PrismStrings {
   );
 
   static const LocalizedText gameOverDesc = LocalizedText(
-    tr: '4+ aynı renkli Rezonans kurarak mühürleri kırabilir, Taktik Enerji ile parçaları döndürebilirsin.',
-    en: 'Build 4+ same-color Resonance lines to shatter Seals, and spend Energy to rotate tricky shapes.',
+    tr: 'Örs’te parça bekletip 🌈 Joker Prizma dökebilir, 2×2 karelerle ★ üretebilir ve ★→★ lazer zinciri kurabilirsin.',
+    en: 'Temper a piece in the Anvil into a 🌈 Wildcard Prism, forge ★ cores via 2×2 quads, and chain ★→★ lasers.',
   );
   static const LocalizedText timeUpDesc = LocalizedText(
     tr: '90 saniyelik Hız Düellosu tamamlandı! Kendi rekorunu geçmek için tekrar dene.',
@@ -112,17 +117,30 @@ class PrismStrings {
     en: 'Prism Quest — 24 Stages',
   );
 
-  static LocalizedText resonanceBanner = const LocalizedText(
+  static const LocalizedText resonanceBanner = LocalizedText(
     tr: 'PRİZMA REZONANSI ×1.5!',
     en: 'PRISM RESONANCE ×1.5!',
   );
-  static LocalizedText crossWaveBanner = const LocalizedText(
+  static const LocalizedText crossWaveBanner = LocalizedText(
     tr: 'ÇAPRAZ ŞOK DALGASI!',
     en: 'CROSS-WAVE BLAST!',
   );
-  static LocalizedText allClearBanner = const LocalizedText(
+  static const LocalizedText synthesisBanner = LocalizedText(
+    tr: 'KRİSTAL DÖKÜM ★',
+    en: 'PRISM FORGED ★',
+  );
+  static const LocalizedText temperedBanner = LocalizedText(
+    tr: 'ÖRS TAMAMLANDI • 🌈 JOKER ★',
+    en: 'PRISM TEMPERED • 🌈 WILD ★',
+  );
+  static const LocalizedText allClearBanner = LocalizedText(
     tr: 'TAHTA TEMİZLENDİ +1000!',
     en: 'ALL CLEAR +1000!',
+  );
+
+  static LocalizedText chainRefractionBanner(int hops) => LocalizedText(
+    tr: 'KIRILIM ZİNCİRİ ×$hops!',
+    en: 'CHAIN REFRACTION ×$hops!',
   );
 
   static LocalizedText questObjectiveSummary({
