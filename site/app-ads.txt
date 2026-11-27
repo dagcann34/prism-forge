@@ -1,4 +1,2 @@
-# Replace pub-0000000000000000 with your real Google AdMob Publisher ID
-# (AdMob Console -> Settings -> Account Information).
-# Note: Google AdMob crawls https://<your-root-domain>/app-ads.txt
-google.com, pub-0000000000000000, DIRECT, f08c47fec0942fa0
+# PRISM FORGE (Prizma Döküm) — Authorized Sellers for Apps (app-ads.txt)
+google.com, pub-1885654505012842, DIRECT, f08c47fec0942fa0

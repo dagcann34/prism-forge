@@ -49,9 +49,9 @@ class AdUnitConfig {
   static const String _testIosInterstitial =
       'ca-app-pub-3940256099942544/4411468910';
   static const String _testAndroidRewarded =
-      'ca-app-pub-3940256099942544/5224354917';
+      'ca-app-pub-3940256099942544/5354046379';
   static const String _testIosRewarded =
-      'ca-app-pub-3940256099942544/1712485313';
+      'ca-app-pub-3940256099942544/6978759866';
 
   static const String androidBannerId = String.fromEnvironment(
     'ADMOB_ANDROID_BANNER_ID',

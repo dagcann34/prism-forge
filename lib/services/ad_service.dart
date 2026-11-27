@@ -70,7 +70,7 @@ class PlatformAdService implements AdService {
   bool _loadingInterstitial = false;
   int _interstitialRetryAttempt = 0;
 
-  RewardedAd? _rewardedAd;
+  RewardedInterstitialAd? _rewardedAd;
   bool _loadingRewarded = false;
   int _rewardedRetryAttempt = 0;
 
@@ -259,10 +259,10 @@ class PlatformAdService implements AdService {
       return;
     }
     _loadingRewarded = true;
-    RewardedAd.load(
+    RewardedInterstitialAd.load(
       adUnitId: _rewardedUnitId,
       request: const AdRequest(),
-      rewardedAdLoadCallback: RewardedAdLoadCallback(
+      rewardedInterstitialAdLoadCallback: RewardedInterstitialAdLoadCallback(
         onAdLoaded: (ad) {
           _loadingRewarded = false;
           _rewardedRetryAttempt = 0;
@@ -310,18 +310,19 @@ class PlatformAdService implements AdService {
 
     var earnedReward = false;
     final completer = Completer<bool>();
-    ad.fullScreenContentCallback = FullScreenContentCallback<RewardedAd>(
-      onAdDismissedFullScreenContent: (adObj) {
-        adObj.dispose();
-        _preloadRewarded();
-        if (!completer.isCompleted) completer.complete(earnedReward);
-      },
-      onAdFailedToShowFullScreenContent: (adObj, error) {
-        adObj.dispose();
-        _preloadRewarded();
-        if (!completer.isCompleted) completer.complete(false);
-      },
-    );
+    ad.fullScreenContentCallback =
+        FullScreenContentCallback<RewardedInterstitialAd>(
+          onAdDismissedFullScreenContent: (adObj) {
+            adObj.dispose();
+            _preloadRewarded();
+            if (!completer.isCompleted) completer.complete(earnedReward);
+          },
+          onAdFailedToShowFullScreenContent: (adObj, error) {
+            adObj.dispose();
+            _preloadRewarded();
+            if (!completer.isCompleted) completer.complete(false);
+          },
+        );
 
     try {
       await ad.show(
