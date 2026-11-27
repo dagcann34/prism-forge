@@ -103,9 +103,7 @@ class TrophyHubSheet extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
                           Text(
-                            isTr
-                                ? 'Game Center / Play Games'
-                                : 'Game Center / Play Games',
+                            'Game Center / Play Games',
                             style: TextStyle(
                               color: palette.ink,
                               fontSize: 12.5,

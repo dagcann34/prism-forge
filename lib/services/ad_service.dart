@@ -2,8 +2,6 @@
 /// AdFrequencyPolicy).
 library;
 
-import 'dart:async';
-
 import 'package:flutter/services.dart';
 
 import '../engine/ad_policy.dart';

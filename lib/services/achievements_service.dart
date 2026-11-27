@@ -2,8 +2,6 @@
 /// (Android) Cloud Sync (re-exports pure-Dart PlayerStats & AchievementCatalog).
 library;
 
-import 'dart:async';
-
 import 'package:flutter/services.dart';
 
 export '../engine/achievements.dart';
