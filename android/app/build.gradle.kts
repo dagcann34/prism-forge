@@ -26,10 +26,16 @@ android {
 
     defaultConfig {
         applicationId = "com.prismforge.app"
-        minSdk = flutter.minSdkVersion
+        minSdk = maxOf(flutter.minSdkVersion, 23)
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        val admobAppId = (project.findProperty("ADMOB_ANDROID_APP_ID") as String?)
+            ?.takeIf { it.isNotBlank() }
+            ?: System.getenv("ADMOB_ANDROID_APP_ID")?.takeIf { it.isNotBlank() }
+            ?: "ca-app-pub-3940256099942544~3347511713"
+        manifestPlaceholders["admobAppId"] = admobAppId
     }
 
     signingConfigs {

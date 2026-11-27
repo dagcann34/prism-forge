@@ -9,6 +9,7 @@ coverage/
 
 # Signing & Secrets (NEVER commit!)
 android/key.properties
+ios/Flutter/AdMob.xcconfig
 *.jks
 *.keystore
 *.p12

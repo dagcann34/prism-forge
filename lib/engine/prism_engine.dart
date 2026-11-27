@@ -999,6 +999,27 @@ class PrismEngine {
     energy = 100;
   }
 
+  /// True when a piece is waiting in the Prism Anvil and not yet tempered.
+  bool get canInstantTemperForge =>
+      _forgedPiece != null &&
+      !_forgedPiece!.isWildcard &&
+      !isGameOver &&
+      !isVictory;
+
+  /// Rewarded Ad optional boost: instantly tempers the stashed Anvil piece
+  /// into Iridescent Rainbow Wildcard Glass + ★ Prism Core.
+  bool instantTemperForge() {
+    if (!canInstantTemperForge) return false;
+    _forgeCharge = forgeMaxCharge;
+    _forgedPiece = _forgedPiece!.copyWith(
+      isWildcard: true,
+      prismCellIndex: _forgedPiece!.prismCellIndex >= 0
+          ? _forgedPiece!.prismCellIndex
+          : 0,
+    );
+    return true;
+  }
+
   /// Unleashes 3x3 Quantum Nova at ([cx], [cy]) for 100% energy, vaporizing
   /// normal blocks, Frosted Crystals, Prism Cores, and Locked Keystones alike.
   MoveOutcome executeQuantumNova(int cx, int cy) {

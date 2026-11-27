@@ -319,6 +319,7 @@ class _PrismGameScreenState extends State<PrismGameScreen>
     _themeCrossFade.dispose();
     _stageIntroCtrl.dispose();
     _victoryStarsCtrl.dispose();
+    widget.adService.dispose();
     super.dispose();
   }
 
@@ -456,6 +457,7 @@ class _PrismGameScreenState extends State<PrismGameScreen>
 
   void _startMode(GameMode mode, {int? stage}) {
     final targetStage = stage ?? _save.currentQuestStage;
+    widget.adService.policy.resetRunCaps();
     setState(() {
       _selectedSlot = null;
       _draggingSlot = null;
@@ -732,12 +734,35 @@ class _PrismGameScreenState extends State<PrismGameScreen>
     }
   }
 
+  Future<T> _runWithMutedAudio<T>(Future<T> Function() action) async {
+    final prevSound = widget.audio.soundEnabled;
+    widget.audio.soundEnabled = false;
+    try {
+      return await action();
+    } finally {
+      widget.audio.soundEnabled = prevSound && _save.soundEnabled;
+    }
+  }
+
+  void _showAdLoadingNotice() {
+    _showBanner(
+      _locale == AppLocale.tr
+          ? 'Reklam hazırlanıyor, tekrar dene'
+          : 'Ad loading, please try again',
+      _palette.accent,
+    );
+  }
+
   Future<void> _handleRewardedRevive() async {
     if (!_engine.canRevive) return;
-    final earned = await widget.adService.showRewarded(
-      RewardedPlacement.rescueRevive,
+    final earned = await _runWithMutedAudio(
+      () => widget.adService.showRewarded(RewardedPlacement.rescueRevive),
     );
-    if (!earned || !mounted) return;
+    if (!mounted) return;
+    if (!earned) {
+      _showAdLoadingNotice();
+      return;
+    }
     final res = _engine.reviveWithRescueNova();
     if (!res.placed) return;
     _spawnClearFx(res);
@@ -749,7 +774,55 @@ class _PrismGameScreenState extends State<PrismGameScreen>
       _palette.prismGold,
     );
     _syncBlitzTimer();
+    _persistHighScores();
     setState(() {});
+  }
+
+  Future<void> _handleRewardedEnergyBoost() async {
+    if (_engine.isGameOver ||
+        _engine.isVictory ||
+        _engine.energy >= 100 ||
+        !widget.adService.policy.canUseEnergyBoost) {
+      return;
+    }
+    final earned = await _runWithMutedAudio(
+      () => widget.adService.showRewarded(RewardedPlacement.energyBoost),
+    );
+    if (!mounted) return;
+    if (!earned) {
+      _showAdLoadingNotice();
+      return;
+    }
+    _engine.grantEnergyBoost();
+    widget.audio.playCue(PrismSoundCue.prismTempered);
+    _showBanner(
+      _locale == AppLocale.tr ? '⚡ +100% NOVA ENERJİSİ!' : '⚡ +100% NOVA ENERGY!',
+      _palette.prismGold,
+    );
+    setState(() {});
+  }
+
+  Future<void> _handleRewardedInstantTemper() async {
+    if (!_engine.canInstantTemperForge ||
+        !widget.adService.policy.canUseInstantTemper) {
+      return;
+    }
+    final earned = await _runWithMutedAudio(
+      () => widget.adService.showRewarded(RewardedPlacement.instantTemper),
+    );
+    if (!mounted) return;
+    if (!earned) {
+      _showAdLoadingNotice();
+      return;
+    }
+    if (_engine.instantTemperForge()) {
+      widget.audio.playCue(PrismSoundCue.prismTempered);
+      _showBanner(
+        _locale == AppLocale.tr ? '🌈 ANINDA JOKER ★!' : '🌈 INSTANT WILDCARD ★!',
+        _palette.prismGold,
+      );
+      setState(() {});
+    }
   }
 
   void _openTrophyHub() {
@@ -767,6 +840,9 @@ class _PrismGameScreenState extends State<PrismGameScreen>
             await widget.gamesService.signInOptional();
             if (mounted) setState(() {});
           },
+          privacyOptionsRequired: widget.adService.isPrivacyOptionsRequired,
+          onTapPrivacyOptions: () =>
+              unawaited(widget.adService.showPrivacyOptionsForm()),
         ),
       ),
     );
@@ -978,34 +1054,29 @@ class _PrismGameScreenState extends State<PrismGameScreen>
   }
 
   Widget _buildSafeAdBannerSlot(PrismPalette p) {
-    return AnimatedContainer(
-      key: const ValueKey<String>('admob_banner_slot'),
-      duration: const Duration(milliseconds: 420),
-      curve: Curves.easeOutCubic,
-      height: 44,
-      decoration: BoxDecoration(
-        color: p.surface.withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(11),
-        border: Border.all(color: p.ink.withValues(alpha: 0.12)),
-      ),
-      alignment: Alignment.center,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: <Widget>[
-          Icon(Icons.ad_units_rounded, size: 14, color: p.mutedInk),
-          const SizedBox(width: 6),
-          Text(
-            _locale == AppLocale.tr
-                ? 'AdMob Uyarlanabilir Banner Alanı (Güvenli Bölge)'
-                : 'AdMob Adaptive Banner Safe Slot',
-            style: TextStyle(
-              color: p.mutedInk,
-              fontSize: 10.5,
-              fontWeight: FontWeight.w700,
+    final fallbackLabel = _locale == AppLocale.tr
+        ? (AdUnitConfig.isUsingTestIds
+              ? 'AdMob Uyarlanabilir Banner (Test Modu)'
+              : 'AdMob Uyarlanabilir Banner')
+        : (AdUnitConfig.isUsingTestIds
+              ? 'AdMob Adaptive Banner (Test Mode)'
+              : 'AdMob Adaptive Banner');
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return AnimatedBuilder(
+          animation: widget.adService.statusListenable,
+          builder: (context, _) => Center(
+            child: widget.adService.buildBannerWidget(
+              maxWidth: constraints.maxWidth,
+              surfaceColor: p.surface.withValues(alpha: 0.72),
+              borderColor: p.ink.withValues(alpha: 0.12),
+              textColor: p.mutedInk,
+              fallbackLabel: fallbackLabel,
             ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -1456,6 +1527,11 @@ class _PrismGameScreenState extends State<PrismGameScreen>
         _engine.energy >= PrismEngine.novaEnergyCost &&
         !_engine.isGameOver &&
         !_engine.isVictory;
+    final canRewardedBoost =
+        _engine.energy < PrismEngine.novaEnergyCost &&
+        widget.adService.policy.canUseEnergyBoost &&
+        !_engine.isGameOver &&
+        !_engine.isVictory;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 420),
@@ -1507,7 +1583,43 @@ class _PrismGameScreenState extends State<PrismGameScreen>
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
+          if (canRewardedBoost) ...<Widget>[
+            InkWell(
+              key: const ValueKey<String>('rewarded_energy_button'),
+              borderRadius: BorderRadius.circular(10),
+              onTap: () => unawaited(_handleRewardedEnergyBoost()),
+              child: Container(
+                height: 34,
+                padding: const EdgeInsets.symmetric(horizontal: 7),
+                decoration: BoxDecoration(
+                  color: p.prismGold.withValues(alpha: 0.22),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: p.prismGold, width: 1.4),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Icon(
+                      Icons.play_circle_filled_rounded,
+                      size: 14,
+                      color: p.ink,
+                    ),
+                    const SizedBox(width: 3),
+                    Text(
+                      '+100%',
+                      style: TextStyle(
+                        color: p.ink,
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 5),
+          ],
           _powerButton(
             key: const ValueKey<String>('rotate_button'),
             p: p,
@@ -1517,7 +1629,7 @@ class _PrismGameScreenState extends State<PrismGameScreen>
             highlight: false,
             onTap: _handleRotate,
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 5),
           _powerButton(
             key: const ValueKey<String>('nova_button'),
             p: p,
@@ -1972,8 +2084,11 @@ class _PrismGameScreenState extends State<PrismGameScreen>
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      onPressed: () {
-                        unawaited(widget.adService.maybeShowInterstitial());
+                      onPressed: () async {
+                        await _runWithMutedAudio(
+                          () => widget.adService.maybeShowInterstitial(),
+                        );
+                        if (!mounted) return;
                         if (hasNextQuestStage) {
                           _startMode(
                             GameMode.quest,
@@ -2315,6 +2430,10 @@ class _PrismGameScreenState extends State<PrismGameScreen>
   }
 
   Widget _buildFooter(PrismPalette p) {
+    final showInstantTemper =
+        _engine.canInstantTemperForge &&
+        widget.adService.policy.canUseInstantTemper;
+
     return Row(
       children: <Widget>[
         Expanded(
@@ -2329,7 +2448,42 @@ class _PrismGameScreenState extends State<PrismGameScreen>
             ),
           ),
         ),
-        const SizedBox(width: 8),
+        if (showInstantTemper) ...<Widget>[
+          const SizedBox(width: 6),
+          InkWell(
+            key: const ValueKey<String>('rewarded_temper_button'),
+            borderRadius: BorderRadius.circular(10),
+            onTap: () => unawaited(_handleRewardedInstantTemper()),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              decoration: BoxDecoration(
+                color: p.prismGold.withValues(alpha: 0.24),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: p.prismGold, width: 1.4),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Icon(
+                    Icons.play_circle_filled_rounded,
+                    size: 13,
+                    color: p.ink,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    _locale == AppLocale.tr ? 'Hızlı Örs ★' : 'Instant Wild ★',
+                    style: TextStyle(
+                      color: p.ink,
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+        const SizedBox(width: 6),
         InkWell(
           key: const ValueKey<String>('restart_button'),
           borderRadius: BorderRadius.circular(10),

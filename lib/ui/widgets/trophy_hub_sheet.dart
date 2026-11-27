@@ -19,6 +19,8 @@ class TrophyHubSheet extends StatelessWidget {
     required this.save,
     required this.gamesConnected,
     required this.onTapConnectGames,
+    this.privacyOptionsRequired = false,
+    this.onTapPrivacyOptions,
   });
 
   final PrismPalette palette;
@@ -26,6 +28,8 @@ class TrophyHubSheet extends StatelessWidget {
   final PrismSaveData save;
   final bool gamesConnected;
   final VoidCallback onTapConnectGames;
+  final bool privacyOptionsRequired;
+  final VoidCallback? onTapPrivacyOptions;
 
   @override
   Widget build(BuildContext context) {
@@ -72,6 +76,24 @@ class TrophyHubSheet extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (privacyOptionsRequired && onTapPrivacyOptions != null)
+                    TextButton.icon(
+                      key: const ValueKey<String>('privacy_options_button'),
+                      onPressed: onTapPrivacyOptions,
+                      icon: Icon(
+                        Icons.privacy_tip_outlined,
+                        size: 16,
+                        color: palette.accent,
+                      ),
+                      label: Text(
+                        isTr ? 'Reklam Gizliliği' : 'Ad Privacy',
+                        style: TextStyle(
+                          color: palette.accent,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
                   IconButton(
                     onPressed: () => Navigator.of(context).pop(),
                     icon: Icon(Icons.close_rounded, color: palette.mutedInk),

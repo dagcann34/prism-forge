@@ -314,36 +314,94 @@ void main() {
   }
   stdout.writeln('  [OK] Prism Fever x2 & Rewarded Rescue Revive verified.');
 
-  // 8. NEW: AdMob Frequency Capping Policy & 12 Achievements Evaluator!
+  // 8. Production AdMob Frequency Capping Policy, Rewarded Boosts & 12 Achievements!
   {
-    final policy = AdFrequencyPolicy(
-      minRoundsBeforeFirstInterstitial: 3,
-      interstitialCooldownSeconds: 180,
-    );
+    final policy = AdFrequencyPolicy();
     final t0 = DateTime(2026, 11, 26, 12, 0, 0);
     _expect(
       !policy.recordRoundAndShouldShowInterstitial(now: t0),
-      'No interstitial on round 1',
-    );
-    _expect(
-      !policy.recordRoundAndShouldShowInterstitial(now: t0),
-      'No interstitial on round 2',
+      'No interstitial on round 1 (retention protection)',
     );
     _expect(
       policy.recordRoundAndShouldShowInterstitial(now: t0),
-      'Interstitial allowed on round 3',
+      'Interstitial allowed on round 2',
     );
     _expect(
       !policy.recordRoundAndShouldShowInterstitial(
         now: t0.add(const Duration(seconds: 60)),
       ),
-      'Interstitial blocked during 180s cooldown',
+      'Interstitial blocked during 120s cooldown',
     );
     _expect(
       policy.recordRoundAndShouldShowInterstitial(
-        now: t0.add(const Duration(seconds: 200)),
+        now: t0.add(const Duration(seconds: 130)),
       ),
-      'Interstitial permitted after 180s cooldown',
+      'Interstitial permitted after 120s cooldown',
+    );
+    // Watching a voluntary Rewarded Ad triggers 90s post-Rewarded grace window.
+    final tReward = t0.add(const Duration(seconds: 260));
+    policy.recordRewardedAdWatched(
+      RewardedPlacement.energyBoost,
+      now: tReward,
+    );
+    _expect(
+      policy.energyBoostsUsedInRun == 1 && policy.canUseEnergyBoost,
+      'Energy boost 1/2 recorded',
+    );
+    _expect(
+      !policy.recordRoundAndShouldShowInterstitial(
+        now: tReward.add(const Duration(seconds: 45)),
+      ),
+      'Interstitial suppressed during 90s post-Rewarded grace window',
+    );
+    _expect(
+      policy.recordRoundAndShouldShowInterstitial(
+        now: tReward.add(const Duration(seconds: 95)),
+      ),
+      'Interstitial resumes after 90s post-Rewarded grace window',
+    );
+    policy.recordRewardedAdWatched(
+      RewardedPlacement.energyBoost,
+      now: tReward.add(const Duration(seconds: 100)),
+    );
+    _expect(
+      !policy.canUseEnergyBoost,
+      'Energy boost strictly capped at 2 per run',
+    );
+    policy.recordRewardedAdWatched(
+      RewardedPlacement.instantTemper,
+      now: tReward.add(const Duration(seconds: 105)),
+    );
+    _expect(
+      !policy.canUseInstantTemper,
+      'Instant Anvil Temper strictly capped at 1 per run',
+    );
+    policy.resetRunCaps();
+    _expect(
+      policy.canUseEnergyBoost && policy.canUseInstantTemper,
+      'resetRunCaps() resets per-run rewarded caps cleanly',
+    );
+
+    // Verify Rewarded Instant Anvil Temper & +100% Energy Boost engine hooks.
+    final boostEngine = PrismEngine(seed: 99);
+    boostEngine.startGame(newMode: GameMode.endless, customSeed: 99);
+    boostEngine.energy = 15;
+    boostEngine.grantEnergyBoost();
+    _expect(
+      boostEngine.energy == 100,
+      'grantEnergyBoost() charges energy to 100%',
+    );
+    boostEngine.stashOrSwapWithForge(0);
+    _expect(
+      boostEngine.canInstantTemperForge && boostEngine.instantTemperForge(),
+      'instantTemperForge() immediately tempers stashed Anvil piece',
+    );
+    _expect(
+      boostEngine.isForgeTempered &&
+          boostEngine.forgedPiece != null &&
+          boostEngine.forgedPiece!.isWildcard &&
+          boostEngine.forgedPiece!.prismCellIndex >= 0,
+      'Instant tempered Anvil piece is 🌈 Wildcard + ★ Prism Core',
     );
 
     const stats = PlayerStats(
@@ -371,7 +429,9 @@ void main() {
       'All 12 Achievements evaluate and unlock cleanly',
     );
   }
-  stdout.writeln('  [OK] AdMob Frequency Policy & 12 Achievements verified.');
+  stdout.writeln(
+    '  [OK] AdMob Frequency Policy, Rewarded Boosts & 12 Achievements verified.',
+  );
 
   // 9. Verify all 14 lively multi-voice PCM synth cues.
   for (final cue in PrismSoundCue.values) {

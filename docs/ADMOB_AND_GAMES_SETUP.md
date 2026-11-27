@@ -1,48 +1,69 @@
-# PRISM FORGE — AdMob Reklamları + Game Center / Google Play Games Kurulum Rehberi
+# PRISM FORGE — Google AdMob Gelir & Mağaza Kurulum Rehberi
 
-## 1. Google / Apple Giriş Neden Zorunlu Olmamalı? (Mağaza Stratejisi)
+## 1. Gelir Mimarisi (Oyuncu Dostu + Maksimum ARPDAU)
 
-PRISM FORGE gibi akış odaklı bir mobil bulmaca oyununda açılışa **Google / Apple e-posta girişi** koymak:
-- İlk açılışta oyuncu kaybını **%40–60** artırır.
-- Apple App Store **Guideline 5.1.1(v)** gereği zorunlu **Sign in with Apple + Uygulama İçi Hesap Silme** ekranı ve sunucu tarafı doğrulama gerektirir.
+PRISM FORGE içine **`google_mobile_ads: ^6.0.0`** SDK'sı, **Google UMP (GDPR/EEA/UK Gizlilik Onayı)**, **iOS ATT & 43 resmi SKAdNetwork ağı** ve **3 katmanlı gelir stratejisi** tam olarak entegre edilmiştir ([`PlatformAdService`](../lib/services/ad_service.dart), [`AdFrequencyPolicy`](../lib/engine/ad_policy.dart)):
 
-**Bunun yerine uygulanan altın standart:**
-- Oyuncu **0. saniyede misafir olarak** hemen oynar (sıfır giriş duvarı).
-- **Kupa & Profil** ekranında isteğe bağlı **iOS Game Center** / **Android Google Play Games** bağlantısı bulunur ([PlatformGamesService](../lib/services/achievements_service.dart)): şifre yok, hesap silme yükümlülüğü yok, doğal OS liderlik tablosu ve **12 Başarım** doğrudan çalışır.
-
----
-
-## 2. AdMob Reklam Mimarisi ([ad_service.dart](../lib/services/ad_service.dart))
-
-Geliri maksimize ederken oyuncu deneyimini ve AdMob/App Store politikalarını koruyan 3 katman:
-
-| Format | Yerleşim | Politika & Koruma |
+| Reklam Formatı | Yerleşim | Politika & Koruma |
 |---|---|---|
-| **Ödüllü Video (Rewarded)** | Oyun Bitti ekranında **"Son Nefes (3×3 Kurtarma + 100% Enerji)"** (oyun başına en fazla 1 kez) ve isteğe bağlı **"+100% Enerji"** | Tamamen oyuncu onaylı (`opt-in`), en yüksek eCPM |
-| **Akıllı Geçiş (Interstitial)** | Yalnızca tur sonunda | İlk 2 turda **asla** gösterilmez; en az **180 saniye** bekleme süresi ([`AdFrequencyPolicy`](../lib/services/ad_service.dart)) |
-| **Uyarlanabilir Banner** | En alt bilgi çubuğunun altında izole güvenli bant | 3 parça tepsisi ve Örs dokunma alanından ayrı (yanlış tıklama ihlali riski sıfır) |
+| **Ödüllü Video #1 — Son Nefes Kurtarma** (`rescueRevive`) | Oyun Bitti / Süre Doldu ekranında merkez 3×3 alanı temizler + **%100 Enerji** (+20 sn Hız Modu) verir | Tur başına en fazla **1 kez**, tamamen oyuncu onaylı (`opt-in`), en yüksek eCPM |
+| **Ödüllü Video #2 — +100% Nova Enerjisi** (`energyBoost`) | Enerji çubuğundaki altın **`+100%`** düğmesi — anında 3×3 Kuantum Nova doldurur | Tur başına en fazla **2 kez**, izlenince 90 sn geçiş reklamı koruması açılır |
+| **Ödüllü Video #3 — Örs Hızlı Döküm** (`instantTemper`) | Örs'te bekleyen parçayı 3 tur beklemeden anında **`🌈 Joker ★`** yapar | Tur başına en fazla **1 kez**, taktik dengeyi bozmadan yüksek ödüllü izlenme sağlar |
+| **Akıllı Geçiş Reklamı (Interstitial)** | Yalnızca bölüm/tur sonunda "Sonraki Bölüm / Tekrar Oyna" geçişinde | **1. tur tamamen reklamsız**, en az **120 saniye** bekleme süresi + herhangi bir Ödüllü Video sonrası **90 saniye dokunulmazlık** |
+| **Uyarlanabilir Banner (Anchored Adaptive)** | Alt bilgi çubuğunun altında izole güvenli bant | 3 parça tepsisi ve Örs dokunma alanından ayrı — yanlış tıklama ihlali riski sıfır |
+
+> **Ses & Gizlilik Koruması:** Tam ekran reklamlar açıldığında oyun sesleri otomatik susturulur ve reklam kapanınca geri açılır. Avrupa Birliği (EEA) / Birleşik Krallık kullanıcılarına Google UMP rıza formu gösterilir ve **Kupa Vitrini** içinde **"Reklam Gizliliği"** düğmesi otomatik aktifleşir.
 
 ---
 
-## 3. Gerçek AdMob ID'lerini Bağlama (Yayına Çıkarken 4 Adım)
+## 2. Kendi AdMob Hesabınızdan Canlı Gelir Almak (Tek Seferlik 2 Dakikalık Kurulum)
 
-1. `pubspec.yaml` içine ekleyin:
-   ```yaml
-   dependencies:
-     google_mobile_ads: ^5.2.0
-   ```
-2. **Android (`android/app/src/main/AndroidManifest.xml`):** `<application>` içine AdMob App ID ekleyin:
-   ```xml
-   <meta-data
-       android:name="com.google.android.gms.ads.APPLICATION_ID"
-       android:value="ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY"/>
-   ```
-3. **iOS (`ios/Runner/Info.plist`):** `GADApplicationIdentifier`, `NSUserTrackingUsageDescription` (ATT izni — isteğe bağlı; reddedilse bile kişiselleştirilmemiş reklam çalışır) ve Google'ın `SKAdNetworkItems` listesini ekleyin.
-4. **Derleme sırasında canlı Reklam Birimi ID'lerini verin** (kaynak koda yazmadan!):
-   ```bash
-   flutter build appbundle --release \
-     --dart-define=ADMOB_ANDROID_BANNER_ID=ca-app-pub-... \
-     --dart-define=ADMOB_ANDROID_INTERSTITIAL_ID=ca-app-pub-... \
-     --dart-define=ADMOB_ANDROID_REWARDED_ID=ca-app-pub-...
-   ```
-   *(Varsayılan olarak Google'ın resmi test ID'leri tanımlıdır — geliştirme sırasında hesabınızın banlanmasını önler.)*
+Kod şu anda hesabınızın geliştirme/test sürecinde askıya alınmaması için **Google'ın resmi test ID'leri** ile güvenli olarak derlenir. Gerçek para kazanmayı açmak için:
+
+### Adım 1 — Google AdMob Panelinde Uygulama & 3 Birim Oluşturun
+1. [admob.google.com](https://admob.google.com) adresinde oturum açın (**Android** ve **iOS** için ayrı uygulama ekleyin).
+2. Her platform için 3 reklam birimi oluşturun:
+   - **Banner** (Uyarlanabilir / Anchored Adaptive)
+   - **Geçiş Reklamı** (Interstitial)
+   - **Ödüllü Reklam** (Rewarded)
+
+### Adım 2 — GitHub Repository Secrets'a 8 ID'yi Ekleyin
+GitHub deponuzda **Settings → Secrets and variables → Actions → New repository secret** yolundan aşağıdaki gizli anahtarları ekleyin (kaynak koda yazmanıza gerek yoktur; CI her derlemede otomatik enjekte eder!):
+
+| GitHub Secret Adı | Örnek Değer | Kullanıldığı Yer |
+|---|---|---|
+| `ADMOB_ANDROID_APP_ID` | `ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY` | `AndroidManifest.xml` (`manifestPlaceholder`) |
+| `ADMOB_ANDROID_BANNER_ID` | `ca-app-pub-XXXXXXXXXXXXXXXX/1111111111` | Android Adaptive Banner |
+| `ADMOB_ANDROID_INTERSTITIAL_ID` | `ca-app-pub-XXXXXXXXXXXXXXXX/2222222222` | Android Interstitial |
+| `ADMOB_ANDROID_REWARDED_ID` | `ca-app-pub-XXXXXXXXXXXXXXXX/3333333333` | Android Rewarded (3 yerleşim) |
+| `ADMOB_IOS_APP_ID` | `ca-app-pub-XXXXXXXXXXXXXXXX~ZZZZZZZZZZ` | `Info.plist` (`GADApplicationIdentifier`) |
+| `ADMOB_IOS_BANNER_ID` | `ca-app-pub-XXXXXXXXXXXXXXXX/4444444444` | iOS Adaptive Banner |
+| `ADMOB_IOS_INTERSTITIAL_ID` | `ca-app-pub-XXXXXXXXXXXXXXXX/5555555555` | iOS Interstitial |
+| `ADMOB_IOS_REWARDED_ID` | `ca-app-pub-XXXXXXXXXXXXXXXX/6666666666` | iOS Rewarded (3 yerleşim) |
+
+### Adım 3 — `app-ads.txt` Dosyasını Yayınlayın (Gelir Kaybını Önlemek İçin Kritik!)
+Geliştirici web sitenizin kök dizinine (`https://siteniz.com/app-ads.txt`) [`docs/app-ads.txt.template`](./app-ads.txt.template) içindeki satırı kendi `pub-XXXXXXXXXXXXXXXX` kimliğinizle yükleyin ve Play Store / App Store mağaza sayfanıza bu web sitesi URL'sini girin.
+
+### Adım 4 — Yerel Mağaza Derlemesi Almak İsterseniz
+```bash
+# Android Google Play Store (.aab)
+ADMOB_ANDROID_APP_ID="ca-app-pub-XXXX~YYYY" \
+flutter build appbundle --release \
+  --dart-define=ADMOB_ANDROID_BANNER_ID=ca-app-pub-XXXX/1111 \
+  --dart-define=ADMOB_ANDROID_INTERSTITIAL_ID=ca-app-pub-XXXX/2222 \
+  --dart-define=ADMOB_ANDROID_REWARDED_ID=ca-app-pub-XXXX/3333
+
+# iOS App Store (.ipa)
+echo "ADMOB_IOS_APP_ID = ca-app-pub-XXXX~ZZZZ" > ios/Flutter/AdMob.xcconfig
+flutter build ipa --release \
+  --dart-define=ADMOB_IOS_BANNER_ID=ca-app-pub-XXXX/4444 \
+  --dart-define=ADMOB_IOS_INTERSTITIAL_ID=ca-app-pub-XXXX/5555 \
+  --dart-define=ADMOB_IOS_REWARDED_ID=ca-app-pub-XXXX/6666
+```
+
+---
+
+## 3. Google / Apple Girişi Neden İsteğe Bağlı? (Mağaza Stratejisi)
+- Oyuncu **0. saniyede misafir olarak** hemen oynar (ilk açılışta %40–60 kullanıcı kaybı yaşanmaz).
+- **Kupa Vitrini** içinde isteğe bağlı **iOS Game Center / Android Google Play Games** bağlantısı bulunur ([`PlatformGamesService`](../lib/services/achievements_service.dart)).
+- App Store **Guideline 5.1.1(v)** zorunlu hesap silme yükümlülüğü olmadan **12 Başarım** ve yerel rekorlar sorunsuz çalışır.
