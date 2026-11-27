@@ -56,11 +56,21 @@ jobs:
       - name: Build Android Release APK & AAB (with AdMob Secrets or Test IDs)
         run: |
           DEFINES=()
-          [ -n "$ADMOB_ANDROID_BANNER_ID" ] && DEFINES+=("--dart-define=ADMOB_ANDROID_BANNER_ID=$ADMOB_ANDROID_BANNER_ID")
-          [ -n "$ADMOB_ANDROID_INTERSTITIAL_ID" ] && DEFINES+=("--dart-define=ADMOB_ANDROID_INTERSTITIAL_ID=$ADMOB_ANDROID_INTERSTITIAL_ID")
-          [ -n "$ADMOB_ANDROID_REWARDED_ID" ] && DEFINES+=("--dart-define=ADMOB_ANDROID_REWARDED_ID=$ADMOB_ANDROID_REWARDED_ID")
-          flutter build apk --release "${DEFINES[@]}"
-          flutter build appbundle --release "${DEFINES[@]}"
+          if [ -n "$ADMOB_ANDROID_BANNER_ID" ]; then DEFINES+=("--dart-define=ADMOB_ANDROID_BANNER_ID=$ADMOB_ANDROID_BANNER_ID"); fi
+          if [ -n "$ADMOB_ANDROID_INTERSTITIAL_ID" ]; then DEFINES+=("--dart-define=ADMOB_ANDROID_INTERSTITIAL_ID=$ADMOB_ANDROID_INTERSTITIAL_ID"); fi
+          if [ -n "$ADMOB_ANDROID_REWARDED_ID" ]; then DEFINES+=("--dart-define=ADMOB_ANDROID_REWARDED_ID=$ADMOB_ANDROID_REWARDED_ID"); fi
+          if ! OUT=$(flutter build apk --release ${DEFINES[@]+"${DEFINES[@]}"} 2>&1); then
+            echo "$OUT"
+            echo "$OUT" | tail -n 35 | while IFS= read -r line; do echo "::error::$line"; done
+            exit 1
+          fi
+          echo "$OUT"
+          if ! OUT=$(flutter build appbundle --release ${DEFINES[@]+"${DEFINES[@]}"} 2>&1); then
+            echo "$OUT"
+            echo "$OUT" | tail -n 35 | while IFS= read -r line; do echo "::error::$line"; done
+            exit 1
+          fi
+          echo "$OUT"
       - uses: actions/upload-artifact@v4
         with:
           name: prism-forge-android-apk
@@ -92,7 +102,12 @@ jobs:
             echo "ADMOB_IOS_APP_ID = $ADMOB_IOS_APP_ID" > ios/Flutter/AdMob.xcconfig
           fi
           DEFINES=()
-          [ -n "$ADMOB_IOS_BANNER_ID" ] && DEFINES+=("--dart-define=ADMOB_IOS_BANNER_ID=$ADMOB_IOS_BANNER_ID")
-          [ -n "$ADMOB_IOS_INTERSTITIAL_ID" ] && DEFINES+=("--dart-define=ADMOB_IOS_INTERSTITIAL_ID=$ADMOB_IOS_INTERSTITIAL_ID")
-          [ -n "$ADMOB_IOS_REWARDED_ID" ] && DEFINES+=("--dart-define=ADMOB_IOS_REWARDED_ID=$ADMOB_IOS_REWARDED_ID")
-          flutter build ios --simulator --no-codesign "${DEFINES[@]}"
+          if [ -n "$ADMOB_IOS_BANNER_ID" ]; then DEFINES+=("--dart-define=ADMOB_IOS_BANNER_ID=$ADMOB_IOS_BANNER_ID"); fi
+          if [ -n "$ADMOB_IOS_INTERSTITIAL_ID" ]; then DEFINES+=("--dart-define=ADMOB_IOS_INTERSTITIAL_ID=$ADMOB_IOS_INTERSTITIAL_ID"); fi
+          if [ -n "$ADMOB_IOS_REWARDED_ID" ]; then DEFINES+=("--dart-define=ADMOB_IOS_REWARDED_ID=$ADMOB_IOS_REWARDED_ID"); fi
+          if ! OUT=$(flutter build ios --simulator --no-codesign ${DEFINES[@]+"${DEFINES[@]}"} 2>&1); then
+            echo "$OUT"
+            echo "$OUT" | tail -n 35 | while IFS= read -r line; do echo "::error::$line"; done
+            exit 1
+          fi
+          echo "$OUT"
