@@ -94,7 +94,9 @@ class _PrismGameScreenState extends State<PrismGameScreen>
   double _boardShake = 0.0;
   DateTime _lastFrame = DateTime.now();
 
-  PrismPalette get _palette => PrismThemes.of(_save.themeId);
+  PrismPalette get _palette => _engine.mode == GameMode.quest
+      ? PrismThemes.vibrantForStage(_save.themeId, _engine.questStageNumber)
+      : PrismThemes.vibrantForStage(_save.themeId, _endlessRealmTier + 1);
   AppLocale get _locale => _save.locale;
 
   PrismPiece? _pieceForSlot(int? slot) {
@@ -174,8 +176,12 @@ class _PrismGameScreenState extends State<PrismGameScreen>
     _syncBlitzTimer();
   }
 
-  void _transitionToTheme(PrismThemeId nextTheme, {bool persist = true}) {
-    if (_save.themeId == nextTheme) return;
+  void _transitionToTheme(
+    PrismThemeId nextTheme, {
+    bool persist = true,
+    bool forceCrossFade = false,
+  }) {
+    if (_save.themeId == nextTheme && !forceCrossFade) return;
     _previousPalette = _palette;
     _save = _save.copyWith(themeId: nextTheme);
     if (_save.reducedMotion) {
@@ -191,14 +197,16 @@ class _PrismGameScreenState extends State<PrismGameScreen>
   void _triggerStageIntroForCurrentQuest() {
     if (_save.reducedMotion) return;
     final spec = QuestStageCatalog.byNumber(_engine.questStageNumber);
-    final stagePalette = PrismThemes.of(
+    final stagePalette = PrismThemes.vibrantForStage(
       _save.autoStageTheme ? spec.themeId : _save.themeId,
+      spec.stageNumber,
     );
-    final chapterRoman = const <String>['I', 'II', 'III', 'IV']
-        [(spec.chapterNumber - 1).clamp(0, 3)];
+    const romans = <String>['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+    final chapterRoman = romans[(spec.chapterNumber - 1).clamp(0, 9)];
+    final bossPrefix = spec.isBossStage ? '👑 BOSS • ' : '';
     final eyebrow = _locale == AppLocale.tr
-        ? 'BÖLÜM ${spec.stageNumber.toString().padLeft(2, '0')} • KISIM $chapterRoman'
-        : 'STAGE ${spec.stageNumber.toString().padLeft(2, '0')} • CHAPTER $chapterRoman';
+        ? '${bossPrefix}BÖLÜM ${spec.stageNumber}/1000 • DİYAR $chapterRoman'
+        : '${bossPrefix}STAGE ${spec.stageNumber}/1000 • REALM $chapterRoman';
     _stageIntro = StageIntroPayload(
       eyebrow: eyebrow,
       title: spec.title.resolve(_locale),
@@ -457,6 +465,8 @@ class _PrismGameScreenState extends State<PrismGameScreen>
 
   void _startMode(GameMode mode, {int? stage}) {
     final targetStage = stage ?? _save.currentQuestStage;
+    final oldPalette = _palette;
+    final oldStage = _engine.questStageNumber;
     widget.adService.policy.resetRunCaps();
     setState(() {
       _selectedSlot = null;
@@ -479,13 +489,18 @@ class _PrismGameScreenState extends State<PrismGameScreen>
         _save = _save.copyWith(currentQuestStage: stage);
       }
 
-      // Auto-evolve atmosphere per stage (Quest) or per date (Daily)!
+      // Auto-evolve vibrant background on EVERY stage (Quest) or per date (Daily)!
       if (_save.autoStageTheme) {
         if (mode == GameMode.quest) {
           final stageTheme = QuestStageCatalog.byNumber(
             _engine.questStageNumber,
           ).themeId;
-          _transitionToTheme(stageTheme, persist: false);
+          _previousPalette = oldPalette;
+          _transitionToTheme(
+            stageTheme,
+            persist: false,
+            forceCrossFade: _engine.questStageNumber != oldStage,
+          );
         } else if (mode == GameMode.daily) {
           final idx =
               _fnvHash(_engine.dailyDateKey) % PrismThemeId.values.length;
@@ -1249,8 +1264,10 @@ class _PrismGameScreenState extends State<PrismGameScreen>
         rightLabel = PrismStrings.best.resolve(_locale);
         rightValue = '${_save.bestEndlessScore}';
       case GameMode.quest:
-        rightLabel = PrismStrings.stage.resolve(_locale);
-        rightValue = '#${_engine.questStageNumber}/24';
+        rightLabel = _engine.isBossStage
+            ? '👑 ${PrismStrings.stage.resolve(_locale)}'
+            : PrismStrings.stage.resolve(_locale);
+        rightValue = '#${_engine.questStageNumber}/1000';
       case GameMode.daily:
         rightLabel = PrismStrings.modeLabel(GameMode.daily).resolve(_locale);
         rightValue = _save.solvedDailyDates.contains(_engine.dailyDateKey)
@@ -1350,14 +1367,23 @@ class _PrismGameScreenState extends State<PrismGameScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text(label, style: TextStyle(color: p.mutedInk, fontSize: 11)),
-            const SizedBox(height: 2),
             Text(
-              value,
-              style: TextStyle(
-                color: p.ink,
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: p.mutedInk, fontSize: 11),
+            ),
+            const SizedBox(height: 2),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                value,
+                style: TextStyle(
+                  color: p.ink,
+                  fontSize: 17.5,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
             ),
           ],
@@ -1375,8 +1401,13 @@ class _PrismGameScreenState extends State<PrismGameScreen>
 
     if (_engine.mode == GameMode.quest) {
       final spec = QuestStageCatalog.byNumber(_engine.questStageNumber);
-      final stPalette = PrismThemes.of(spec.themeId);
-      pillText = '#${spec.stageNumber} ${stPalette.badgeEmoji} ${spec.title.resolve(_locale)} ▾';
+      final stPalette = PrismThemes.vibrantForStage(
+        spec.themeId,
+        spec.stageNumber,
+      );
+      final bossCrown = spec.isBossStage ? '👑' : '';
+      pillText =
+          '#${spec.stageNumber} $bossCrown${stPalette.badgeEmoji} ${spec.title.resolve(_locale)} ▾';
       descText = PrismStrings.questObjectiveSummary(
         remainingCores: math.max(
           0,
@@ -1440,6 +1471,11 @@ class _PrismGameScreenState extends State<PrismGameScreen>
       opensSheet = true;
     }
 
+    final showMovesBadge =
+        _engine.hasMoveLimit &&
+        (_engine.mode == GameMode.quest || _engine.mode == GameMode.daily);
+    final lowMoves = showMovesBadge && _engine.movesLeft <= 5;
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 420),
       curve: Curves.easeOutCubic,
@@ -1447,7 +1483,12 @@ class _PrismGameScreenState extends State<PrismGameScreen>
       decoration: BoxDecoration(
         color: p.surface,
         borderRadius: BorderRadius.circular(13),
-        border: Border.all(color: p.ink.withValues(alpha: 0.14)),
+        border: Border.all(
+          color: lowMoves
+              ? const Color(0xFFFF3B5C)
+              : p.ink.withValues(alpha: 0.14),
+          width: lowMoves ? 1.6 : 1.0,
+        ),
       ),
       child: Row(
         children: <Widget>[
@@ -1458,7 +1499,7 @@ class _PrismGameScreenState extends State<PrismGameScreen>
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 420),
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              constraints: const BoxConstraints(maxWidth: 164),
+              constraints: const BoxConstraints(maxWidth: 152),
               decoration: BoxDecoration(
                 color: p.accent,
                 borderRadius: BorderRadius.circular(8),
@@ -1469,13 +1510,13 @@ class _PrismGameScreenState extends State<PrismGameScreen>
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: p.accentInk,
-                  fontSize: 10.8,
+                  fontSize: 10.6,
                   fontWeight: FontWeight.w900,
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 7),
           Expanded(
             child: Text(
               descText,
@@ -1483,14 +1524,38 @@ class _PrismGameScreenState extends State<PrismGameScreen>
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: p.ink,
-                fontSize: 11,
+                fontSize: 10.8,
                 fontWeight: FontWeight.w700,
               ),
             ),
           ),
+          if (showMovesBadge) ...<Widget>[
+            const SizedBox(width: 5),
+            Container(
+              key: const ValueKey<String>('moves_left_badge'),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: lowMoves
+                    ? const Color(0xFFFF3B5C)
+                    : p.prismGold.withValues(alpha: 0.24),
+                borderRadius: BorderRadius.circular(7),
+                border: Border.all(
+                  color: lowMoves ? const Color(0xFFFF3B5C) : p.prismGold,
+                ),
+              ),
+              child: Text(
+                '🎯${_engine.movesLeft}',
+                style: TextStyle(
+                  color: lowMoves ? Colors.white : p.ink,
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ],
           const SizedBox(width: 6),
           SizedBox(
-            width: 46,
+            width: 38,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
@@ -1501,12 +1566,12 @@ class _PrismGameScreenState extends State<PrismGameScreen>
               ),
             ),
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 5),
           Text(
             metric,
             style: TextStyle(
               color: p.ink,
-              fontSize: 10.8,
+              fontSize: 10.5,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -1900,13 +1965,14 @@ class _PrismGameScreenState extends State<PrismGameScreen>
   Widget _buildResultOverlay(PrismPalette p) {
     final isWin = _engine.isVictory;
     final isQuestWin = isWin && _engine.mode == GameMode.quest;
-    final hasNextQuestStage = isQuestWin && _engine.questStageNumber < 24;
+    final hasNextQuestStage =
+        isQuestWin && _engine.questStageNumber < QuestStageCatalog.totalStages;
     final currentSpec = QuestStageCatalog.byNumber(_engine.questStageNumber);
     final nextSpec = hasNextQuestStage
         ? QuestStageCatalog.byNumber(_engine.questStageNumber + 1)
         : null;
     final nextPalette = nextSpec != null
-        ? PrismThemes.of(nextSpec.themeId)
+        ? PrismThemes.vibrantForStage(nextSpec.themeId, nextSpec.stageNumber)
         : null;
     final earnedStars = isQuestWin ? _engine.computeQuestStars() : 0;
 
@@ -1919,7 +1985,9 @@ class _PrismGameScreenState extends State<PrismGameScreen>
       desc = PrismStrings.dailyClearDesc.resolve(_locale);
       actionLabel = PrismStrings.playAgain.resolve(_locale);
     } else if (isQuestWin) {
-      title = '#${currentSpec.stageNumber} • ${currentSpec.title.resolve(_locale)}';
+      final crown = currentSpec.isBossStage ? '👑 ' : '';
+      title =
+          '$crown#${currentSpec.stageNumber} • ${currentSpec.title.resolve(_locale)}';
       desc = PrismStrings.stageClearDesc.resolve(_locale);
       actionLabel = hasNextQuestStage && nextSpec != null && nextPalette != null
           ? '${PrismStrings.nextStage.resolve(_locale)} → ${nextPalette.badgeEmoji} ${nextSpec.title.resolve(_locale)}'
@@ -1928,6 +1996,10 @@ class _PrismGameScreenState extends State<PrismGameScreen>
         _engine.blitzSecondsLeft <= 0) {
       title = PrismStrings.timeUpTitle.resolve(_locale);
       desc = PrismStrings.timeUpDesc.resolve(_locale);
+      actionLabel = PrismStrings.playAgain.resolve(_locale);
+    } else if (_engine.isOutOfMoves) {
+      title = PrismStrings.outOfMovesTitle.resolve(_locale);
+      desc = PrismStrings.outOfMovesDesc.resolve(_locale);
       actionLabel = PrismStrings.playAgain.resolve(_locale);
     } else {
       title = PrismStrings.gameOverTitle.resolve(_locale);
@@ -2036,11 +2108,15 @@ class _PrismGameScreenState extends State<PrismGameScreen>
                         size: 18,
                       ),
                       label: Text(
-                        _locale == AppLocale.tr
-                            ? 'Son Nefes: 3×3 Kurtar (Ödüllü)'
-                            : 'Rescue Revive: Clear 3×3 (Rewarded)',
+                        _engine.isOutOfMoves
+                            ? (_locale == AppLocale.tr
+                                  ? 'Son Nefes: +8 Hamle & 3×3 Kurtar (Ödüllü)'
+                                  : 'Rescue Revive: +8 Moves & 3×3 (Rewarded)')
+                            : (_locale == AppLocale.tr
+                                  ? 'Son Nefes: 3×3 Kurtar (Ödüllü)'
+                                  : 'Rescue Revive: Clear 3×3 (Rewarded)'),
                         style: const TextStyle(
-                          fontSize: 12,
+                          fontSize: 11.5,
                           fontWeight: FontWeight.w900,
                         ),
                       ),

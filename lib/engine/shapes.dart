@@ -239,10 +239,46 @@ class ShapeLibrary {
     (sum, s) => sum + s.weight,
   );
 
-  static List<GridPoint> pickWeighted(SeededRandom rng) {
-    var roll = rng.nextInt(totalWeight);
+  static int _effectiveWeight(WeightedShape shape, int difficultyTier) {
+    final tier = difficultyTier.clamp(1, 10);
+    if (tier == 1) return shape.weight;
+    final len = shape.cells.length;
+    if (len <= 2) {
+      // Gradually make tiny 1x1 / 1x2 rescue blocks rarer on master tiers.
+      return (shape.weight - (tier - 1)).clamp(3, shape.weight);
+    }
+    if (len >= 5) {
+      // Increase challenging 5-cell / 6-cell / 3x3 polyominoes on harder tiers.
+      return shape.weight + ((tier - 1) * 2) ~/ 3;
+    }
+    if (len == 4) {
+      return shape.weight + (tier >= 5 ? 2 : 1);
+    }
+    return shape.weight;
+  }
+
+  static List<GridPoint> pickWeighted(
+    SeededRandom rng, {
+    int difficultyTier = 1,
+  }) {
+    if (difficultyTier <= 1) {
+      var roll = rng.nextInt(totalWeight);
+      for (final shape in catalog) {
+        roll -= shape.weight;
+        if (roll < 0) {
+          return List<GridPoint>.from(shape.cells);
+        }
+      }
+      return const <GridPoint>[GridPoint(0, 0)];
+    }
+
+    var sum = 0;
     for (final shape in catalog) {
-      roll -= shape.weight;
+      sum += _effectiveWeight(shape, difficultyTier);
+    }
+    var roll = rng.nextInt(sum);
+    for (final shape in catalog) {
+      roll -= _effectiveWeight(shape, difficultyTier);
       if (roll < 0) {
         return List<GridPoint>.from(shape.cells);
       }

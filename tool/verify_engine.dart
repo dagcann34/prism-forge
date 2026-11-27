@@ -33,22 +33,30 @@ void main() {
     '=== PRISM FORGE (Prizma Döküm) — Pure Dart Engine Verification ===',
   );
 
-  // 1. Verify all 24 Quest Stages, unique bilingual names, lore & zero-repeat 12-theme progression.
+  // 1. Verify ALL 1,000 Quest Stages, unique bilingual names, lore, Bosses & zero-repeat theme progression!
   _expect(PrismThemeId.values.length == 12, '12 dazzling Prism themes defined');
-  _expect(QuestStageCatalog.stages.length == 24, '24 Quest stages exist');
+  _expect(
+    QuestStageCatalog.stages.length == 1000,
+    '1,000 Quest stages exist across 10 Realms',
+  );
   final trTitles = <String>{};
   final enTitles = <String>{};
   final usedThemes = <PrismThemeId>{};
   var adjacentThemeRepeats = 0;
+  var bossCount = 0;
+  var exactSeedCount = 0;
+  var playableCount = 0;
+  var loreCount = 0;
+
   for (var i = 0; i < QuestStageCatalog.stages.length; i++) {
     final spec = QuestStageCatalog.stages[i];
     trTitles.add(spec.title.tr);
     enTitles.add(spec.title.en);
     usedThemes.add(spec.themeId);
-    _expect(
-      spec.subtitle.tr.isNotEmpty && spec.subtitle.en.isNotEmpty,
-      'Stage #${spec.stageNumber} has bilingual lore subtitle',
-    );
+    if (spec.subtitle.tr.isNotEmpty && spec.subtitle.en.isNotEmpty) {
+      loreCount++;
+    }
+    if (spec.isBossStage) bossCount++;
     if (i > 0 && QuestStageCatalog.stages[i - 1].themeId == spec.themeId) {
       adjacentThemeRepeats++;
     }
@@ -67,29 +75,64 @@ void main() {
         if (c.isLocked) locks++;
       }
     }
-    _expect(
-      cores == spec.targetCores &&
-          frosts == spec.targetFrost &&
-          locks == spec.targetLocks,
-      'Stage #${spec.stageNumber} seeds exact targets ($cores/$frosts/$locks)',
-    );
-    _expect(
-      engine.hasAnyValidMove(),
-      'Stage #${spec.stageNumber} starts playable',
-    );
+    if (cores == spec.targetCores &&
+        frosts == spec.targetFrost &&
+        locks == spec.targetLocks) {
+      exactSeedCount++;
+    }
+    if (engine.hasAnyValidMove()) {
+      playableCount++;
+    }
   }
-  _expect(trTitles.length == 24, 'All 24 stages have unique Turkish names');
-  _expect(enTitles.length == 24, 'All 24 stages have unique English names');
+  _expect(loreCount == 1000, 'All 1,000 stages have bilingual lore subtitles');
+  _expect(exactSeedCount == 1000, 'All 1,000 stages seed exact ★/❄/🔒 targets');
+  _expect(playableCount == 1000, 'All 1,000 stages start 100% playable');
+  _expect(bossCount == 100, '100 Boss stages (#10..#1000) defined');
+  _expect(trTitles.length == 1000, 'All 1,000 stages have unique Turkish names');
+  _expect(enTitles.length == 1000, 'All 1,000 stages have unique English names');
   _expect(
     usedThemes.length == PrismThemeId.values.length,
-    'All 12 dazzling themes are showcased across the 24 stages',
+    'All 12 dazzling themes are showcased across the 1,000 stages',
   );
   _expect(
     adjacentThemeRepeats == 0,
-    'Zero consecutive stages share the same theme (theme evolves every stage)',
+    'Zero consecutive stages share the same theme across all 1,000 stages',
   );
+
+  // Verify Stage 1000 Final Boss move limit & Out-of-Moves -> +8 moves Rescue Revive!
+  {
+    final bossEngine = PrismEngine(seed: 1000);
+    bossEngine.startGame(newMode: GameMode.quest, stageNumber: 1000);
+    _expect(
+      bossEngine.isBossStage && bossEngine.hasMoveLimit && bossEngine.movesLeft == 34,
+      'Stage #1000 Final Boss starts with 34-move hardcore budget',
+    );
+    bossEngine.movesUsed = bossEngine.moveLimit - 1;
+    // Find any valid placement for a 1x1 test piece so moves hit 0 without completing objective.
+    bossEngine.setTrayForTest(const <PrismPiece?>[
+      PrismPiece(cells: <GridPoint>[GridPoint(0, 0)], colorIndex: 0),
+      null,
+      null,
+    ]);
+    GridPoint? freePt;
+    for (var y = 0; y < PrismEngine.gridSize && freePt == null; y++) {
+      for (var x = 0; x < PrismEngine.gridSize && freePt == null; x++) {
+        if (bossEngine.grid[y][x] == null) freePt = GridPoint(x, y);
+      }
+    }
+    final out = bossEngine.placePiece(0, freePt!.x, freePt.y);
+    _expect(
+      out.placed && bossEngine.isOutOfMoves && bossEngine.isGameOver,
+      'Exhausting move budget triggers Out-of-Moves Game Over',
+    );
+    final rev = bossEngine.reviveWithRescueNova();
+    _expect(
+      rev.placed && !bossEngine.isGameOver && !bossEngine.isOutOfMoves && bossEngine.movesLeft == 8,
+      'Rescue Revive grants +8 extra moves & resumes Stage #1000',
+    );
+  }
   stdout.writeln(
-    '  [OK] All 24 Architect Quest stages, unique TR/EN names & 12-theme rotation verified.',
+    '  [OK] All 1,000 Quest stages, 100 Bosses, unique TR/EN names, move limits & vibrant themes verified.',
   );
 
   // 2. Verify 4+ Harmonic Resonance (x1.5) & Lock breaking.

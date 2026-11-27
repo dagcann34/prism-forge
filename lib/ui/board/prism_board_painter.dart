@@ -106,8 +106,13 @@ class AmbientBackdropPainter extends CustomPainter {
     final rect = Offset.zero & size;
     final t = transitionT.clamp(0.0, 1.0);
     final prev = previousPalette;
+    final hasPrevChange =
+        prev != null &&
+        t < 1.0 &&
+        (prev.id != palette.id ||
+            prev.backgroundGradient[0] != palette.backgroundGradient[0]);
     final List<Color> gradColors;
-    if (prev != null && prev.id != palette.id && t < 1.0) {
+    if (hasPrevChange) {
       gradColors = <Color>[
         for (var i = 0; i < 3; i++)
           Color.lerp(
@@ -120,21 +125,71 @@ class AmbientBackdropPainter extends CustomPainter {
       gradColors = palette.backgroundGradient;
     }
 
+    // Living gently breathing diagonal gradient angle.
+    final sway = math.sin(phase * math.pi * 2) * 0.24;
     canvas.drawRect(
       rect,
       Paint()
         ..shader = LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+          begin: Alignment(-1.0 + sway, -1.0),
+          end: Alignment(1.0 - sway, 1.0),
           colors: gradColors,
         ).createShader(rect),
     );
 
-    if (prev != null && prev.id != palette.id && t < 1.0) {
+    // Radiant drifting luminous bokeh color-blooms ("cıvıl cıvıl" glow!).
+    final bloomColors = <Color>[
+      palette.prismGold,
+      palette.resonanceColor,
+      palette.feverAccent,
+    ];
+    for (var b = 0; b < 3; b++) {
+      final ang = phase * math.pi * 2 + b * 2.094;
+      final cx = size.width * (0.2 + b * 0.3) + math.cos(ang) * 34;
+      final cy = size.height * (0.18 + b * 0.28) + math.sin(ang * 0.8) * 28;
+      final rad = size.width * (0.42 + (b % 2) * 0.14);
+      final col = bloomColors[b];
+      canvas.drawCircle(
+        Offset(cx, cy),
+        rad,
+        Paint()
+          ..shader = RadialGradient(
+            colors: <Color>[
+              col.withValues(alpha: 0.24),
+              col.withValues(alpha: 0.0),
+            ],
+          ).createShader(Rect.fromCircle(center: Offset(cx, cy), radius: rad)),
+      );
+    }
+
+    if (hasPrevChange) {
       _paintAmbientStyle(canvas, size, prev.ambientStyle, 1.0 - t);
       _paintAmbientStyle(canvas, size, palette.ambientStyle, t);
     } else {
       _paintAmbientStyle(canvas, size, palette.ambientStyle, 1.0);
+    }
+
+    // Cheerful twinkling 4-point crystal confetti sparkles across every realm.
+    for (var s = 0; s < 10; s++) {
+      final sx = size.width * (((s * 0.197 + 0.07) % 0.9) + 0.05);
+      final sy = size.height * (((s * 0.271 + 0.11) % 0.88) + 0.06);
+      final pulse = 0.25 + 0.75 * math.sin(phase * math.pi * 4 + s * 1.1).abs();
+      final r = (3.5 + (s % 3) * 1.8) * pulse;
+      final sparklePaint = Paint()
+        ..color = Colors.white.withValues(alpha: 0.34 * pulse);
+      canvas.drawPath(
+        Path()
+          ..moveTo(sx, sy - r)
+          ..lineTo(sx + r * 0.28, sy - r * 0.28)
+          ..lineTo(sx + r, sy)
+          ..lineTo(sx + r * 0.28, sy + r * 0.28)
+          ..lineTo(sx, sy + r)
+          ..lineTo(sx - r * 0.28, sy + r * 0.28)
+          ..lineTo(sx - r, sy)
+          ..lineTo(sx - r * 0.28, sy - r * 0.28)
+          ..close(),
+        sparklePaint,
+      );
     }
   }
 

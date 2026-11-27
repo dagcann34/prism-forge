@@ -21,7 +21,7 @@ class PrismStrings {
       case GameMode.endless:
         return const LocalizedText(tr: 'Sonsuz', en: 'Endless');
       case GameMode.quest:
-        return const LocalizedText(tr: '24 Bölüm', en: '24 Stages');
+        return const LocalizedText(tr: '1000 Böl.', en: '1K Stages');
       case GameMode.daily:
         return const LocalizedText(tr: 'Günlük', en: 'Daily');
       case GameMode.blitz:
@@ -73,6 +73,10 @@ class PrismStrings {
     tr: 'Hamle Kalmadı',
     en: 'No Moves Left',
   );
+  static const LocalizedText outOfMovesTitle = LocalizedText(
+    tr: 'Hamle Limiti Doldu!',
+    en: 'Out of Moves!',
+  );
   static const LocalizedText timeUpTitle = LocalizedText(
     tr: 'Süre Doldu!',
     en: 'Time Up!',
@@ -89,6 +93,10 @@ class PrismStrings {
   static const LocalizedText gameOverDesc = LocalizedText(
     tr: 'Örs’te parça bekletip 🌈 Joker Prizma dökebilir, 2×2 karelerle ★ üretebilir ve ★→★ lazer zinciri kurabilirsin.',
     en: 'Temper a piece in the Anvil into a 🌈 Wildcard Prism, forge ★ cores via 2×2 quads, and chain ★→★ lasers.',
+  );
+  static const LocalizedText outOfMovesDesc = LocalizedText(
+    tr: 'Hamle bütçen bitti! Son Nefes ile +8 ekstra hamle + 3×3 Nova kazanabilir veya stratejini yenileyebilirsin.',
+    en: 'Move budget exhausted! Use Rescue Revive for +8 extra moves + 3×3 Nova or refine your combo strategy.',
   );
   static const LocalizedText timeUpDesc = LocalizedText(
     tr: '90 saniyelik Hız Düellosu tamamlandı! Kendi rekorunu geçmek için tekrar dene.',
@@ -113,8 +121,8 @@ class PrismStrings {
   );
 
   static const LocalizedText questDrawerTitle = LocalizedText(
-    tr: 'Prizma Görevi — 24 Bölüm',
-    en: 'Prism Quest — 24 Stages',
+    tr: 'Prizma Görevi — 1.000 Bölüm',
+    en: 'Prism Quest — 1,000 Stages',
   );
 
   static const LocalizedText resonanceBanner = LocalizedText(

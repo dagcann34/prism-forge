@@ -76,6 +76,12 @@ class PrismEngine {
   int targetLocks = 0;
   int collectedLocks = 0;
 
+  int moveLimit = 0;
+  int movesUsed = 0;
+  int currentDifficultyTier = 1;
+  bool isBossStage = false;
+  bool isOutOfMoves = false;
+
   double blitzSecondsLeft = blitzInitialSeconds.toDouble();
   bool isGameOver = false;
   bool isVictory = false;
@@ -89,6 +95,8 @@ class PrismEngine {
   bool get isForgeTempered => _forgedPiece != null && _forgedPiece!.isWildcard;
   bool get isFeverActive => streak >= 3 && streakTurnsLeft > 0;
   bool get canRevive => isGameOver && !isVictory && !reviveUsedInRun;
+  bool get hasMoveLimit => moveLimit > 0;
+  int get movesLeft => hasMoveLimit ? math.max(0, moveLimit - movesUsed) : 999;
 
   int get totalTargets => targetCores + targetFrost + targetLocks;
   int get totalCollected => collectedCores + collectedFrost + collectedLocks;
@@ -129,6 +137,11 @@ class PrismEngine {
     collectedFrost = 0;
     targetLocks = 0;
     collectedLocks = 0;
+    moveLimit = 0;
+    movesUsed = 0;
+    currentDifficultyTier = 1;
+    isBossStage = false;
+    isOutOfMoves = false;
     blitzSecondsLeft = blitzInitialSeconds.toDouble();
     isGameOver = false;
     isVictory = false;
@@ -140,12 +153,15 @@ class PrismEngine {
     if (newMode == GameMode.quest) {
       questStageNumber = (stageNumber ?? questStageNumber).clamp(
         1,
-        QuestStageCatalog.stages.length,
+        QuestStageCatalog.totalStages,
       );
       final spec = QuestStageCatalog.byNumber(questStageNumber);
+      moveLimit = spec.moveLimit;
+      currentDifficultyTier = spec.difficultyTier;
+      isBossStage = spec.isBossStage;
       _rng = SeededRandom(
         customSeed ??
-            SeededRandom.hashString('prism_forge_quest_${spec.stageNumber}_v1'),
+            SeededRandom.hashString('prism_forge_quest_${spec.stageNumber}_v2'),
       );
       _seedSpecialBoard(
         cores: spec.targetCores,
@@ -155,11 +171,13 @@ class PrismEngine {
       );
     } else if (newMode == GameMode.daily) {
       dailyDateKey = dateKey ?? formatDateKey(DateTime.now());
+      currentDifficultyTier = 3;
+      moveLimit = 30;
       _rng = SeededRandom(
         customSeed ??
             SeededRandom.hashString('prism_forge_daily_$dailyDateKey'),
       );
-      _seedSpecialBoard(cores: 3, frost: 3, locks: 2, clutter: 13);
+      _seedSpecialBoard(cores: 3, frost: 3, locks: 2, clutter: 14);
     } else {
       _rng = SeededRandom(customSeed ?? DateTime.now().microsecondsSinceEpoch);
       _grid = _emptyGrid();
@@ -191,14 +209,16 @@ class PrismEngine {
     targetFrost = frost;
     targetLocks = locks;
 
+    final minRequired = cores + frost + locks;
     final totalCells = math.min(
-      24,
-      math.max(clutter, cores + frost + locks + 3),
+      34,
+      math.max(clutter, minRequired + (minRequired < 30 ? 2 : 0)),
     );
+    final maxPerLine = totalCells >= 26 ? 6 : 5;
     final coords = <GridPoint>[];
     var safety = 0;
 
-    while (coords.length < totalCells && safety < 320) {
+    while (coords.length < totalCells && safety < 640) {
       safety++;
       final x = _rng.nextInt(gridSize);
       final y = _rng.nextInt(gridSize);
@@ -210,7 +230,7 @@ class PrismEngine {
         if (_grid[y][i] != null) rowCount++;
         if (_grid[i][x] != null) colCount++;
       }
-      if (rowCount >= 5 || colCount >= 5) continue;
+      if (rowCount >= maxPerLine || colCount >= maxPerLine) continue;
 
       _grid[y][x] = BoardCell(colorIndex: _rng.nextInt(paletteColorCount));
       coords.add(GridPoint(x, y));
@@ -281,10 +301,16 @@ class PrismEngine {
   }
 
   PrismPiece _generatePiece({required bool forceFit}) {
-    var cells = ShapeLibrary.pickWeighted(_rng);
+    var cells = ShapeLibrary.pickWeighted(
+      _rng,
+      difficultyTier: currentDifficultyTier,
+    );
     if (forceFit) {
       for (var attempt = 0; attempt < 24; attempt++) {
-        final cand = ShapeLibrary.pickWeighted(_rng);
+        final cand = ShapeLibrary.pickWeighted(
+          _rng,
+          difficultyTier: currentDifficultyTier,
+        );
         if (canPlaceAnywhere(PrismPiece(cells: cand, colorIndex: 0))) {
           cells = cand;
           break;
@@ -673,6 +699,9 @@ class PrismEngine {
     int gy, {
     required bool fromForge,
   }) {
+    if (hasMoveLimit) {
+      movesUsed++;
+    }
     final placedCoords = <GridPoint>{};
     for (var i = 0; i < piece.cells.length; i++) {
       final c = piece.cells[i];
@@ -870,6 +899,9 @@ class PrismEngine {
 
       if (isObjectiveComplete) {
         isVictory = true;
+      } else if (hasMoveLimit && movesLeft <= 0) {
+        isOutOfMoves = true;
+        isGameOver = true;
       } else if (!hasAnyValidMove()) {
         isGameOver = true;
       }
@@ -925,6 +957,9 @@ class PrismEngine {
 
     if (isObjectiveComplete) {
       isVictory = true;
+    } else if (hasMoveLimit && movesLeft <= 0) {
+      isOutOfMoves = true;
+      isGameOver = true;
     } else if (!hasAnyValidMove()) {
       isGameOver = true;
     }
@@ -951,12 +986,13 @@ class PrismEngine {
   }
 
   /// Rewarded Ad "Son Nefes / Rescue Revive" (max 1 per run): vaporizes the
-  /// center 3x3 zone, restores 100% Tactical Energy (+15s in Blitz), and
-  /// resumes gameplay cleanly.
+  /// center 3x3 zone, restores 100% Tactical Energy (+20s in Blitz / +8 moves
+  /// when out of moves), and resumes gameplay cleanly.
   MoveOutcome reviveWithRescueNova() {
     if (!canRevive) return const MoveOutcome(placed: false);
     reviveUsedInRun = true;
     isGameOver = false;
+    isOutOfMoves = false;
 
     final cleared = <GridPoint>[];
     for (var y = 2; y <= 5; y++) {
@@ -979,6 +1015,9 @@ class PrismEngine {
     }
 
     energy = 100;
+    if (hasMoveLimit && movesLeft <= 0) {
+      moveLimit += 8;
+    }
     if (mode == GameMode.blitz && blitzSecondsLeft <= 0) {
       blitzSecondsLeft = 20.0;
     }

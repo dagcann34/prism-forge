@@ -23,7 +23,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('PRİZMA DÖKÜM'), findsOneWidget);
-      expect(find.text('#1/24'), findsOneWidget);
+      expect(find.text('#1/1000'), findsOneWidget);
       expect(find.byKey(const ValueKey<String>('anvil_slot')), findsOneWidget);
       expect(
         find.byKey(const ValueKey<String>('admob_banner_slot')),
@@ -61,7 +61,7 @@ void main() {
       expect(find.text('PRISM FORGE'), findsOneWidget);
       expect(find.text('Anvil'), findsOneWidget);
 
-      // Open Visual Stage Journey Map and jump to Stage #3 -> theme auto-evolves to Bahar (Blossom)!
+      // Open Visual 1,000-Stage Journey Map and jump to Stage #3 -> theme auto-evolves to Blossom!
       await tester.tap(
         find.byKey(const ValueKey<String>('context_pill_button')),
       );
@@ -72,8 +72,21 @@ void main() {
       );
       await tester.tap(find.byKey(const ValueKey<String>('stage_tile_3')));
       await tester.pumpAndSettle();
-      expect(find.text('#3/24'), findsOneWidget);
+      expect(find.text('#3/1000'), findsOneWidget);
       expect(find.text('Blossom'), findsOneWidget);
+
+      // Open Stage Map again, switch to Boss Stage #10 -> verifies Moves Left badge appears!
+      await tester.tap(
+        find.byKey(const ValueKey<String>('context_pill_button')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey<String>('stage_tile_10')));
+      await tester.pumpAndSettle();
+      expect(find.text('#10/1000'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey<String>('moves_left_badge')),
+        findsOneWidget,
+      );
 
       // Rotate consumes 35% energy (50% -> 15%)
       await tester.tap(find.byKey(const ValueKey<String>('rotate_button')));

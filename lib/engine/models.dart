@@ -273,7 +273,7 @@ class MoveOutcome {
   final bool gameOver;
 }
 
-/// Handcrafted stage blueprint for the 24-stage Prizma Görevi (Prism Quest).
+/// Stage blueprint for the 1,000-stage Prizma Görevi (Prism Quest) odyssey.
 class QuestStageSpec {
   const QuestStageSpec({
     required this.stageNumber,
@@ -287,6 +287,10 @@ class QuestStageSpec {
     required this.initialClutter,
     required this.twoStarScore,
     required this.threeStarScore,
+    this.moveLimit = 0,
+    this.difficultyTier = 1,
+    this.isBossStage = false,
+    this.backgroundVariant = 0,
   });
 
   final int stageNumber;
@@ -300,6 +304,18 @@ class QuestStageSpec {
   final int initialClutter;
   final int twoStarScore;
   final int threeStarScore;
+
+  /// Move budget (0 = unlimited for onboarding stages; >0 = tactical move limit).
+  final int moveLimit;
+
+  /// Escalating difficulty tier (1..10) influencing board density & piece weights.
+  final int difficultyTier;
+
+  /// True on every 10th milestone Boss Stage (#10, #20, ..., #1000).
+  final bool isBossStage;
+
+  /// Deterministic per-stage vibrant hue/bloom variant index.
+  final int backgroundVariant;
 
   int get totalTargets => targetCores + targetFrost + targetLocks;
 }

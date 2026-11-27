@@ -148,7 +148,7 @@ class PrismSaveData {
           ? json['bestBlitzScore']! as int
           : 0,
       currentQuestStage: json['currentQuestStage'] is int
-          ? (json['currentQuestStage']! as int).clamp(1, 24)
+          ? (json['currentQuestStage']! as int).clamp(1, 1000)
           : 1,
       questStarsByStage: stars,
       solvedDailyDates: daily,

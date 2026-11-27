@@ -435,7 +435,7 @@ class PrismThemes {
     ],
   );
 
-  /// Theme 6: Kuzey Işığı / Polar Aurora
+  /// Theme 6: Kuzey Işığı / Polar Aurora (Radiant Electric Teal & Violet)
   static const PrismPalette polarAurora = PrismPalette(
     id: PrismThemeId.polarAurora,
     name: LocalizedText(tr: 'Kuzey', en: 'Aurora'),
@@ -443,11 +443,11 @@ class PrismThemes {
     badgeEmoji: '🌌',
     brightness: Brightness.dark,
     backgroundGradient: <Color>[
-      Color(0xFF071A36),
-      Color(0xFF0E3B5E),
-      Color(0xFF136F75),
+      Color(0xFF0E4D92),
+      Color(0xFF14A3B8),
+      Color(0xFF3BF5C4),
     ],
-    background: Color(0xFF0A2847),
+    background: Color(0xFF1175A6),
     surface: Color(0xEB0F2C4D),
     surfaceElevated: Color(0xFF163F66),
     boardBackground: Color(0xFF06182B),
@@ -505,9 +505,9 @@ class PrismThemes {
     badgeEmoji: '❄️',
     brightness: Brightness.light,
     backgroundGradient: <Color>[
-      Color(0xFF8FD8FF),
-      Color(0xFFCCF0FF),
-      Color(0xFFDFD1FF),
+      Color(0xFF66CCFF),
+      Color(0xFFBAE8FF),
+      Color(0xFFDDC2FF),
     ],
     background: Color(0xFFAEE2FF),
     surface: Color(0xF5F6FCFF),
@@ -559,7 +559,7 @@ class PrismThemes {
     ],
   );
 
-  /// Theme 8: Derin Mercan / Biolume Reef
+  /// Theme 8: Derin Mercan / Biolume Reef (Vibrant Glowing Ocean Cyan & Magenta)
   static const PrismPalette abyssalReef = PrismPalette(
     id: PrismThemeId.abyssalReef,
     name: LocalizedText(tr: 'Okyanus', en: 'Biolume'),
@@ -567,11 +567,11 @@ class PrismThemes {
     badgeEmoji: '🪼',
     brightness: Brightness.dark,
     backgroundGradient: <Color>[
-      Color(0xFF051937),
-      Color(0xFF08376B),
-      Color(0xFF0A5E7A),
+      Color(0xFF0A47A6),
+      Color(0xFF00A8CC),
+      Color(0xFF00F5D4),
     ],
-    background: Color(0xFF06254A),
+    background: Color(0xFF065E91),
     surface: Color(0xEB0A2E52),
     surfaceElevated: Color(0xFF114270),
     boardBackground: Color(0xFF04152B),
@@ -621,7 +621,7 @@ class PrismThemes {
     ],
   );
 
-  /// Theme 9: Zümrüt Orman / Emerald Canopy
+  /// Theme 9: Zümrüt Orman / Emerald Canopy (Sunlit Lush Jade & Lime)
   static const PrismPalette emeraldCanopy = PrismPalette(
     id: PrismThemeId.emeraldCanopy,
     name: LocalizedText(tr: 'Zümrüt', en: 'Emerald'),
@@ -629,11 +629,11 @@ class PrismThemes {
     badgeEmoji: '🌿',
     brightness: Brightness.dark,
     backgroundGradient: <Color>[
-      Color(0xFF0A2E24),
-      Color(0xFF115E48),
-      Color(0xFF1F8A64),
+      Color(0xFF0E7C5B),
+      Color(0xFF22C58B),
+      Color(0xFFA3F76B),
     ],
-    background: Color(0xFF0D4434),
+    background: Color(0xFF12946C),
     surface: Color(0xEB104235),
     surfaceElevated: Color(0xFF175947),
     boardBackground: Color(0xFF07211A),
@@ -683,7 +683,7 @@ class PrismThemes {
     ],
   );
 
-  /// Theme 10: Ametist Vitray / Amethyst Cathedral
+  /// Theme 10: Ametist Vitray / Amethyst Cathedral (Vivid Orchid & Electric Violet)
   static const PrismPalette amethystDusk = PrismPalette(
     id: PrismThemeId.amethystDusk,
     name: LocalizedText(tr: 'Ametist', en: 'Amethyst'),
@@ -691,11 +691,11 @@ class PrismThemes {
     badgeEmoji: '🔮',
     brightness: Brightness.dark,
     backgroundGradient: <Color>[
-      Color(0xFF1E103D),
-      Color(0xFF3D1E78),
-      Color(0xFF6B2EA6),
+      Color(0xFF5D2AE8),
+      Color(0xFFA84DFF),
+      Color(0xFFFF6BD6),
     ],
-    background: Color(0xFF2E1759),
+    background: Color(0xFF7736E8),
     surface: Color(0xEB2D1959),
     surfaceElevated: Color(0xFF3E2478),
     boardBackground: Color(0xFF160B30),
@@ -745,7 +745,7 @@ class PrismThemes {
     ],
   );
 
-  /// Theme 11: Yakut Ocak / Crimson Forge
+  /// Theme 11: Yakut Ocak / Crimson Forge (Fiery Sunset Coral & Tangerine Gold)
   static const PrismPalette crimsonForge = PrismPalette(
     id: PrismThemeId.crimsonForge,
     name: LocalizedText(tr: 'Yakut', en: 'Forge'),
@@ -753,11 +753,11 @@ class PrismThemes {
     badgeEmoji: '🔥',
     brightness: Brightness.dark,
     backgroundGradient: <Color>[
-      Color(0xFF2B0814),
-      Color(0xFF63132B),
-      Color(0xFFA8263C),
+      Color(0xFFC81D4E),
+      Color(0xFFFF5252),
+      Color(0xFFFFB347),
     ],
-    background: Color(0xFF470D1F),
+    background: Color(0xFFE0354F),
     surface: Color(0xEB471022),
     surfaceElevated: Color(0xFF611830),
     boardBackground: Color(0xFF210610),
@@ -807,7 +807,7 @@ class PrismThemes {
     ],
   );
 
-  /// Theme 12: Göksel Prizma / Celestial Nebula
+  /// Theme 12: Göksel Prizma / Celestial Nebula (Luminous Starlight Indigo & Pink-Gold)
   static const PrismPalette celestialCrown = PrismPalette(
     id: PrismThemeId.celestialCrown,
     name: LocalizedText(tr: 'Göksel', en: 'Celestial'),
@@ -815,11 +815,11 @@ class PrismThemes {
     badgeEmoji: '✨',
     brightness: Brightness.dark,
     backgroundGradient: <Color>[
-      Color(0xFF0C0B2E),
-      Color(0xFF1E1B63),
-      Color(0xFF43238A),
+      Color(0xFF2E27A8),
+      Color(0xFF7B3FE4),
+      Color(0xFFFF6FA5),
     ],
-    background: Color(0xFF141247),
+    background: Color(0xFF4733BF),
     surface: Color(0xEB191752),
     surfaceElevated: Color(0xFF282478),
     boardBackground: Color(0xFF090824),
@@ -911,5 +911,60 @@ class PrismThemes {
       case PrismThemeId.celestialCrown:
         return celestialCrown;
     }
+  }
+
+  /// Generates a vibrant, joyful ("cıvıl cıvıl") per-stage variation of [id]
+  /// so every single stage across 1..1000 radiates its own lively backdrop hue
+  /// while keeping UI surfaces and contrast crisp and legible.
+  static PrismPalette vibrantForStage(PrismThemeId id, int stageNumber) {
+    final base = of(id);
+    if (stageNumber <= 12) return base;
+    // Golden-angle hue rotation produces richly varied, never-monotonous backdrops.
+    final cycle = (stageNumber - 1) ~/ all.length;
+    final hueShift = ((cycle * 37.5 + (stageNumber % 7) * 9.0) % 360.0);
+    Color shiftVivid(Color c, double deltaDeg, double lightBoost) {
+      final hsl = HSLColor.fromColor(c);
+      final nextHue = (hsl.hue + deltaDeg) % 360.0;
+      final nextSat = (hsl.saturation + 0.08).clamp(0.58, 1.0);
+      final nextLight = (hsl.lightness + lightBoost).clamp(0.34, 0.84);
+      return hsl
+          .withHue(nextHue)
+          .withSaturation(nextSat)
+          .withLightness(nextLight)
+          .toColor();
+    }
+
+    final grad = <Color>[
+      shiftVivid(base.backgroundGradient[0], hueShift, 0.03),
+      shiftVivid(base.backgroundGradient[1], (hueShift + 14.0) % 360.0, 0.04),
+      shiftVivid(base.backgroundGradient[2], (hueShift + 28.0) % 360.0, 0.05),
+    ];
+
+    return PrismPalette(
+      id: base.id,
+      name: base.name,
+      fullName: base.fullName,
+      badgeEmoji: base.badgeEmoji,
+      brightness: base.brightness,
+      backgroundGradient: grad,
+      background: grad[1],
+      surface: base.surface,
+      surfaceElevated: base.surfaceElevated,
+      boardBackground: base.boardBackground,
+      boardBorderGlow: shiftVivid(base.boardBorderGlow, hueShift * 0.5, 0.04),
+      cellBackground: base.cellBackground,
+      cellAltTint: base.cellAltTint,
+      cellBorder: base.cellBorder,
+      ink: base.ink,
+      mutedInk: base.mutedInk,
+      accent: base.accent,
+      accentInk: base.accentInk,
+      resonanceColor: base.resonanceColor,
+      prismGold: base.prismGold,
+      feverAccent: base.feverAccent,
+      ambientStyle: PrismAmbientStyle
+          .values[(base.ambientStyle.index + cycle) % PrismAmbientStyle.values.length],
+      gemRamps: base.gemRamps,
+    );
   }
 }

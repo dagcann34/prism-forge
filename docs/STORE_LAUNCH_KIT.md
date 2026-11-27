@@ -56,8 +56,8 @@ Bu belge, **Google Play Console**, **Apple App Store Connect** ve **Google AdMob
   > • **★→★ Optik Lazer Zinciri:** Hizalanmış Prizma Çekirdekleri birbirine lazer yansıtarak zincirleme patlama yaratır.
   > • **2×2 Prizma Sentezi:** Aynı renkten 2×2 kare oluştur, anında yeni ★ Çekirdek üret.
   > • **Taktik Enerji Çubuğu:** Şansa değil beceriye dayalı! Parçayı 90° döndür veya %100 Kuantum Nova ile 3×3 alanı buharlaştır.
-  > • **24 Özgün Bölüm & 12 Canlı Tema:** Her bölüm sonunda atmosfer, renk paleti ve cam parçacık efektleri evrilir.
-  > • **4 Oyun Modu:** Görev (24 Bölüm), Sonsuz Akış, Günlük Meydan Okuma ve 90 sn Hız Modu. Çevrimdışı oyna, sıfır zorunlu üyelik!
+  > • **1.000 Zorlu Bölüm & 100 Boss Sınavı:** Her bölümde cıvıl cıvıl değişen arka plan teması, 10 Büyük Diyar, dar hamle bütçeleri ve bitirmesi gerçek ustalık gerektiren kristal kaleler!
+  > • **4 Oyun Modu:** Görev (1.000 Bölüm), Sonsuz Akış, Günlük Meydan Okuma ve 90 sn Hız Modu. Çevrimdışı oyna, sıfır zorunlu üyelik!
 
 ### English (EN)
 - **App Name (30 chars):** `PRISM FORGE: Tactical Puzzle`
