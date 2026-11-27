@@ -35,12 +35,16 @@ void main() {
       );
       expect(find.text('Tropik'), findsOneWidget);
 
-      // Open Trophy Vault (zero forced login + UMP Ad Privacy button when required!)
+      // Open Trophy Vault (zero forced login + UMP Ad Privacy + Privacy Policy!)
       await tester.tap(find.byKey(const ValueKey<String>('trophy_button')));
       await tester.pumpAndSettle();
       expect(find.textContaining('Kupa Vitrini'), findsOneWidget);
       expect(
         find.byKey(const ValueKey<String>('privacy_options_button')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey<String>('privacy_policy_button')),
         findsOneWidget,
       );
       await tester.tap(find.byIcon(Icons.close_rounded));

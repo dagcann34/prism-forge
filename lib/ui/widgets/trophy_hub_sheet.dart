@@ -289,9 +289,80 @@ class TrophyHubSheet extends StatelessWidget {
                   },
                 ),
               ),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: <Widget>[
+                  TextButton.icon(
+                    key: const ValueKey<String>('privacy_policy_button'),
+                    onPressed: () => _showPrivacyPolicyDialog(context, isTr),
+                    icon: Icon(
+                      Icons.shield_outlined,
+                      size: 15,
+                      color: palette.mutedInk,
+                    ),
+                    label: Text(
+                      isTr ? 'Gizlilik Politikası' : 'Privacy Policy',
+                      style: TextStyle(
+                        color: palette.mutedInk,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    'v1.0 • PRISM FORGE',
+                    style: TextStyle(
+                      color: palette.mutedInk.withValues(alpha: 0.7),
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _showPrivacyPolicyDialog(BuildContext context, bool isTr) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: palette.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: Text(
+          isTr ? 'Gizlilik ve Reklam Politikası' : 'Privacy & Ads Policy',
+          style: TextStyle(
+            color: palette.ink,
+            fontSize: 16,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        content: Text(
+          isTr
+              ? 'PRISM FORGE (Prizma Döküm) zorunlu hesap veya e-posta istemez; oyun ilerlemeniz cihazınızda saklanır.\n\n'
+                    'Ücretsiz oyun deneyimini desteklemek için Google AdMob reklamları (Banner, Geçiş ve isteğe bağlı Ödüllü Video) kullanılır. AB/BK kullanıcıları için Google UMP rıza yönetimi ve iOS için ATT izni desteklenir.\n\n'
+                    'Tam Gizlilik Politikası:\nhttps://dagcann34.github.io/prism-forge/privacy.html'
+              : 'PRISM FORGE requires no forced login or email; your game progress is stored locally on your device.\n\n'
+                    'To keep the game free, Google AdMob ads (Banner, Interstitial, and opt-in Rewarded Videos) are served with Google UMP GDPR consent and iOS ATT support.\n\n'
+                    'Full Privacy Policy:\nhttps://dagcann34.github.io/prism-forge/privacy.html',
+          style: TextStyle(color: palette.mutedInk, fontSize: 12.5, height: 1.4),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(
+              isTr ? 'Tamam' : 'OK',
+              style: TextStyle(
+                color: palette.accent,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
