@@ -1,7 +1,7 @@
 /// Zero-dependency offline progress persistence for PRISM FORGE.
 ///
-/// Backed by native SharedPreferences (Android) and UserDefaults (iOS) with
-/// graceful memory fallback for headless unit/widget tests.
+/// Stores high scores, 24-stage stars, Daily Challenge history, 12 Achievements,
+/// lifetime PlayerStats, theme/locale/audio prefs, and Ad-Free entitlement.
 library;
 
 import 'dart:convert';
@@ -9,6 +9,7 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 
 import '../engine/models.dart';
+import '../services/achievements_service.dart';
 
 class PrismSaveData {
   const PrismSaveData({
@@ -17,6 +18,9 @@ class PrismSaveData {
     this.currentQuestStage = 1,
     this.questStarsByStage = const <int, int>{},
     this.solvedDailyDates = const <String>{},
+    this.unlockedAchievementIds = const <String>{},
+    this.stats = const PlayerStats(),
+    this.adsRemoved = false,
     this.themeId = PrismThemeId.ceramic,
     this.locale = AppLocale.tr,
     this.soundEnabled = true,
@@ -29,6 +33,9 @@ class PrismSaveData {
   final int currentQuestStage;
   final Map<int, int> questStarsByStage;
   final Set<String> solvedDailyDates;
+  final Set<String> unlockedAchievementIds;
+  final PlayerStats stats;
+  final bool adsRemoved;
   final PrismThemeId themeId;
   final AppLocale locale;
   final bool soundEnabled;
@@ -41,6 +48,9 @@ class PrismSaveData {
     int? currentQuestStage,
     Map<int, int>? questStarsByStage,
     Set<String>? solvedDailyDates,
+    Set<String>? unlockedAchievementIds,
+    PlayerStats? stats,
+    bool? adsRemoved,
     PrismThemeId? themeId,
     AppLocale? locale,
     bool? soundEnabled,
@@ -53,6 +63,10 @@ class PrismSaveData {
       currentQuestStage: currentQuestStage ?? this.currentQuestStage,
       questStarsByStage: questStarsByStage ?? this.questStarsByStage,
       solvedDailyDates: solvedDailyDates ?? this.solvedDailyDates,
+      unlockedAchievementIds:
+          unlockedAchievementIds ?? this.unlockedAchievementIds,
+      stats: stats ?? this.stats,
+      adsRemoved: adsRemoved ?? this.adsRemoved,
       themeId: themeId ?? this.themeId,
       locale: locale ?? this.locale,
       soundEnabled: soundEnabled ?? this.soundEnabled,
@@ -69,6 +83,9 @@ class PrismSaveData {
       for (final e in questStarsByStage.entries) '${e.key}': e.value,
     },
     'solvedDailyDates': solvedDailyDates.toList()..sort(),
+    'unlockedAchievementIds': unlockedAchievementIds.toList()..sort(),
+    'stats': stats.toJson(),
+    'adsRemoved': adsRemoved,
     'themeId': themeId.name,
     'locale': locale.name,
     'soundEnabled': soundEnabled,
@@ -97,12 +114,25 @@ class PrismSaveData {
       }
     }
 
+    final trophies = <String>{};
+    final rawTrophies = json['unlockedAchievementIds'];
+    if (rawTrophies is List<Object?>) {
+      for (final item in rawTrophies) {
+        if (item is String) trophies.add(item);
+      }
+    }
+
+    final rawStats = json['stats'];
+    final stats = rawStats is Map<Object?, Object?>
+        ? PlayerStats.fromJson(rawStats)
+        : const PlayerStats();
+
     final themeName = json['themeId'] is String
         ? json['themeId']! as String
         : '';
     final theme = PrismThemeId.values.firstWhere(
       (t) => t.name == themeName,
-      orElse: () => PrismThemeId.obsidian,
+      orElse: () => PrismThemeId.ceramic,
     );
 
     return PrismSaveData(
@@ -117,6 +147,9 @@ class PrismSaveData {
           : 1,
       questStarsByStage: stars,
       solvedDailyDates: daily,
+      unlockedAchievementIds: trophies,
+      stats: stats,
+      adsRemoved: json['adsRemoved'] == true,
       themeId: theme,
       locale: json['locale'] == 'en' ? AppLocale.en : AppLocale.tr,
       soundEnabled: json['soundEnabled'] != false,
@@ -135,7 +168,7 @@ class PlatformPrismStorage implements PrismStorage {
   PlatformPrismStorage({MethodChannel? channel})
     : _channel = channel ?? const MethodChannel('com.prismforge/storage');
 
-  static const String _storageKey = 'prism_forge_save_v1';
+  static const String _storageKey = 'prism_forge_save_v2';
   final MethodChannel _channel;
   PrismSaveData _fallback = const PrismSaveData();
 

@@ -19,6 +19,8 @@ enum PrismSoundCue {
   lockBreak,
   prismBlast,
   prismTempered,
+  feverStart,
+  achievementUnlock,
   nova,
   stageClear,
   allClear,
@@ -335,6 +337,118 @@ class PrismSynth {
             decay: 4.5,
           ),
         ], totalSec: 0.62);
+
+      case PrismSoundCue.feverStart:
+        return _mixNotes(const <_Note>[
+          _Note(
+            voice: _Voice.marimba,
+            freq: 523.25,
+            startSec: 0.000,
+            durSec: 0.16,
+            amp: 0.22,
+            decay: 6.0,
+          ),
+          _Note(
+            voice: _Voice.glock,
+            freq: 587.33,
+            startSec: 0.035,
+            durSec: 0.16,
+            amp: 0.20,
+            decay: 6.0,
+          ),
+          _Note(
+            voice: _Voice.marimba,
+            freq: 659.25,
+            startSec: 0.070,
+            durSec: 0.16,
+            amp: 0.22,
+            decay: 6.0,
+          ),
+          _Note(
+            voice: _Voice.glock,
+            freq: 783.99,
+            startSec: 0.105,
+            durSec: 0.16,
+            amp: 0.20,
+            decay: 6.0,
+          ),
+          _Note(
+            voice: _Voice.marimba,
+            freq: 880.00,
+            startSec: 0.140,
+            durSec: 0.16,
+            amp: 0.22,
+            decay: 6.0,
+          ),
+          _Note(
+            voice: _Voice.glock,
+            freq: 1046.50,
+            startSec: 0.175,
+            durSec: 0.18,
+            amp: 0.22,
+            decay: 5.5,
+          ),
+          _Note(
+            voice: _Voice.brassBell,
+            freq: 1046.50,
+            startSec: 0.22,
+            durSec: 0.52,
+            amp: 0.22,
+            decay: 3.2,
+          ),
+          _Note(
+            voice: _Voice.brassBell,
+            freq: 1567.98,
+            startSec: 0.22,
+            durSec: 0.52,
+            amp: 0.20,
+            decay: 3.2,
+          ),
+          _Note(
+            voice: _Voice.glock,
+            freq: 2093.00,
+            startSec: 0.24,
+            durSec: 0.46,
+            amp: 0.18,
+            decay: 3.8,
+          ),
+        ], totalSec: 0.76);
+
+      case PrismSoundCue.achievementUnlock:
+        return _mixNotes(const <_Note>[
+          _Note(
+            voice: _Voice.glock,
+            freq: 1046.50,
+            startSec: 0.00,
+            durSec: 0.18,
+            amp: 0.22,
+            decay: 5.5,
+          ),
+          _Note(
+            voice: _Voice.glock,
+            freq: 1318.51,
+            startSec: 0.07,
+            durSec: 0.20,
+            amp: 0.22,
+            decay: 5.0,
+          ),
+          _Note(
+            voice: _Voice.glock,
+            freq: 1567.98,
+            startSec: 0.14,
+            durSec: 0.24,
+            amp: 0.24,
+            decay: 4.5,
+          ),
+          _Note(
+            voice: _Voice.glock,
+            freq: 2093.00,
+            startSec: 0.22,
+            durSec: 0.36,
+            amp: 0.24,
+            decay: 3.8,
+          ),
+        ], totalSec: 0.60);
 
       case PrismSoundCue.nova:
         return _mixNotes(const <_Note>[

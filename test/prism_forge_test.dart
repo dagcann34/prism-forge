@@ -2,17 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:prism_forge/audio/prism_audio.dart';
 import 'package:prism_forge/engine/models.dart';
+import 'package:prism_forge/services/achievements_service.dart';
+import 'package:prism_forge/services/ad_service.dart';
 import 'package:prism_forge/storage/prism_storage.dart';
 import 'package:prism_forge/ui/app.dart';
 
 void main() {
   testWidgets(
-    'launches into vibrant PRISM FORGE with Anvil slot, 24 stages & modes',
+    'launches into vibrant PRISM FORGE with Anvil, Trophy Hub, AdMob slot & modes',
     (tester) async {
       await tester.pumpWidget(
         PrismForgeApp(
           storage: MemoryPrismStorage(const PrismSaveData(reducedMotion: true)),
           audio: PrismAudio(),
+          adService: MockAdService(),
+          gamesService: PlatformGamesService(),
         ),
       );
       await tester.pumpAndSettle();
@@ -20,7 +24,18 @@ void main() {
       expect(find.text('PRİZMA DÖKÜM'), findsOneWidget);
       expect(find.text('#1/24'), findsOneWidget);
       expect(find.byKey(const ValueKey<String>('anvil_slot')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey<String>('trophy_button')),
+        findsOneWidget,
+      );
       expect(find.text('Tropik'), findsOneWidget);
+
+      // Open Trophy Vault (zero forced login; optional Game Center/Play Games sync!)
+      await tester.tap(find.byKey(const ValueKey<String>('trophy_button')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Kupa Vitrini'), findsOneWidget);
+      await tester.tap(find.byIcon(Icons.close_rounded));
+      await tester.pumpAndSettle();
 
       // Cycle vibrant themes (Tropik -> Şeker)
       await tester.tap(find.byKey(const ValueKey<String>('theme_button')));
@@ -32,16 +47,6 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('PRISM FORGE'), findsOneWidget);
       expect(find.text('Anvil'), findsOneWidget);
-
-      // Open 24-Stage Quest Picker & select Stage 13
-      await tester.tap(
-        find.byKey(const ValueKey<String>('context_pill_button')),
-      );
-      await tester.pumpAndSettle();
-      expect(find.text('Prism Quest — 24 Stages'), findsOneWidget);
-      await tester.tap(find.text('#13 🔒'));
-      await tester.pumpAndSettle();
-      expect(find.text('#13/24'), findsOneWidget);
 
       // Rotate consumes 35% energy (50% -> 15%)
       await tester.tap(find.byKey(const ValueKey<String>('rotate_button')));

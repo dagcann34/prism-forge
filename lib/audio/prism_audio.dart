@@ -30,6 +30,8 @@ class PrismAudio {
         case PrismSoundCue.lockBreak:
         case PrismSoundCue.prismBlast:
         case PrismSoundCue.prismTempered:
+        case PrismSoundCue.feverStart:
+        case PrismSoundCue.achievementUnlock:
         case PrismSoundCue.nova:
         case PrismSoundCue.stageClear:
         case PrismSoundCue.allClear:

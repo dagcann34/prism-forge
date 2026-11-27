@@ -441,6 +441,7 @@ class PrismBoardPainter extends CustomPainter {
     this.preview,
     this.novaMode = false,
     this.novaHover,
+    this.isFever = false,
   });
 
   final List<List<BoardCell?>> grid;
@@ -452,6 +453,7 @@ class PrismBoardPainter extends CustomPainter {
   final PlacementPreview? preview;
   final bool novaMode;
   final GridPoint? novaHover;
+  final bool isFever;
 
   static const double boardPadding = 8.0;
 
@@ -463,15 +465,35 @@ class PrismBoardPainter extends CustomPainter {
       const Radius.circular(18),
     );
 
-    // 1. Jewel-toned board well + luminous glossy rim.
+    // 1. Jewel-toned board well + luminous rim (rotating Rainbow Fever aura when streak >= 3!).
     canvas.drawRRect(outerRRect, Paint()..color = palette.boardBackground);
-    canvas.drawRRect(
-      outerRRect.deflate(1),
-      Paint()
-        ..color = palette.boardBorderGlow.withValues(alpha: 0.55)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.0,
-    );
+    if (isFever) {
+      canvas.drawRRect(
+        outerRRect.deflate(1.5),
+        Paint()
+          ..shader = SweepGradient(
+            colors: const <Color>[
+              Color(0xFF00E5FF),
+              Color(0xFFFF38B8),
+              Color(0xFFFFE424),
+              Color(0xFF34E870),
+              Color(0xFF9D6BFF),
+              Color(0xFF00E5FF),
+            ],
+            transform: GradientRotation(phase * math.pi * 2),
+          ).createShader(Offset.zero & size)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3.8,
+      );
+    } else {
+      canvas.drawRRect(
+        outerRRect.deflate(1),
+        Paint()
+          ..color = palette.boardBorderGlow.withValues(alpha: 0.55)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.0,
+      );
+    }
 
     // 2. 8x8 architectural grid slots with 4x4 quadrant shimmer.
     for (var y = 0; y < PrismEngine.gridSize; y++) {

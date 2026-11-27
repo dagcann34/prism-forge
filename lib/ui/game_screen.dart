@@ -18,21 +18,28 @@ import '../audio/prism_synth.dart';
 import '../engine/models.dart';
 import '../engine/prism_engine.dart';
 import '../l10n/prism_strings.dart';
+import '../services/achievements_service.dart';
+import '../services/ad_service.dart';
 import '../storage/prism_storage.dart';
 import '../theme/prism_themes.dart';
 import 'board/prism_board_painter.dart';
 import 'widgets/stage_picker_sheet.dart';
+import 'widgets/trophy_hub_sheet.dart';
 
 class PrismGameScreen extends StatefulWidget {
   const PrismGameScreen({
     super.key,
     required this.storage,
     required this.audio,
+    required this.adService,
+    required this.gamesService,
     this.initialMode = GameMode.quest,
   });
 
   final PrismStorage storage;
   final PrismAudio audio;
+  final AdService adService;
+  final PlatformGamesService gamesService;
   final GameMode initialMode;
 
   @override
@@ -86,6 +93,7 @@ class _PrismGameScreenState extends State<PrismGameScreen>
       duration: const Duration(seconds: 6),
     )..addListener(_onAnimationTick);
     _engine.startGame(newMode: widget.initialMode, stageNumber: 1);
+    unawaited(widget.adService.initialize());
     unawaited(_loadSave());
   }
 
@@ -96,6 +104,7 @@ class _PrismGameScreenState extends State<PrismGameScreen>
       _save = loaded;
       widget.audio.soundEnabled = loaded.soundEnabled;
       widget.audio.hapticsEnabled = loaded.hapticsEnabled;
+      widget.adService.policy.adsRemoved = loaded.adsRemoved;
       _engine.startGame(
         newMode: widget.initialMode,
         stageNumber: loaded.currentQuestStage,
@@ -388,6 +397,16 @@ class _PrismGameScreenState extends State<PrismGameScreen>
       widget.audio.playCue(PrismSoundCue.frostCrack);
     }
 
+    if (outcome.enteredFever) {
+      widget.audio.playCue(PrismSoundCue.feverStart);
+      _showBanner(
+        _locale == AppLocale.tr
+            ? '🔥 PRİZMA COŞKUSU ×2!'
+            : '🔥 PRISM FEVER ×2!',
+        _palette.prismGold,
+      );
+    }
+
     if (outcome.forgeTempered) {
       widget.audio.playCue(PrismSoundCue.prismTempered);
       _showBanner(
@@ -401,8 +420,98 @@ class _PrismGameScreenState extends State<PrismGameScreen>
       widget.audio.playCue(PrismSoundCue.fail);
     }
 
+    _recordOutcomeStatsAndTrophies(outcome);
     _persistHighScores();
     setState(() {});
+  }
+
+  void _recordOutcomeStatsAndTrophies(MoveOutcome outcome) {
+    final prev = _save.stats;
+    final nextStats = prev.copyWith(
+      totalLinesCleared: prev.totalLinesCleared + outcome.linesCleared,
+      totalResonances:
+          prev.totalResonances + (outcome.triggeredResonance ? 1 : 0),
+      totalRefractionChains:
+          prev.totalRefractionChains + outcome.refractionBeams.length,
+      totalSynthesizedCores:
+          prev.totalSynthesizedCores + outcome.synthesizedCores.length,
+      totalTemperedWildcards:
+          prev.totalTemperedWildcards + (outcome.forgeTempered ? 1 : 0),
+      totalFrostCracked: prev.totalFrostCracked + outcome.crackedFrostCount,
+      totalLocksBroken: prev.totalLocksBroken + outcome.brokenLockCount,
+      totalAllClears: prev.totalAllClears + (outcome.allClearBonus ? 1 : 0),
+      maxStreakReached: math.max(prev.maxStreakReached, _engine.streak),
+      feverCount: prev.feverCount + (outcome.enteredFever ? 1 : 0),
+    );
+    _save = _save.copyWith(stats: nextStats);
+
+    final newlyUnlocked = AchievementCatalog.evaluateNewUnlocks(
+      existingIds: _save.unlockedAchievementIds,
+      stats: nextStats,
+      bestEndless: math.max(
+        _save.bestEndlessScore,
+        _engine.mode == GameMode.endless ? _engine.score : 0,
+      ),
+      bestBlitz: math.max(
+        _save.bestBlitzScore,
+        _engine.mode == GameMode.blitz ? _engine.score : 0,
+      ),
+      solvedQuestCount: _save.questStarsByStage.length,
+      solvedDailyCount: _save.solvedDailyDates.length,
+    );
+    if (newlyUnlocked.isNotEmpty) {
+      final merged = Set<String>.from(_save.unlockedAchievementIds)
+        ..addAll(newlyUnlocked.map((a) => a.id));
+      _save = _save.copyWith(unlockedAchievementIds: merged);
+      widget.audio.playCue(PrismSoundCue.achievementUnlock);
+      final first = newlyUnlocked.first;
+      _showBanner(
+        '${first.iconGlyph} ${first.title.resolve(_locale)}',
+        _palette.prismGold,
+      );
+      for (final a in newlyUnlocked) {
+        unawaited(widget.gamesService.unlockAchievement(a.id));
+      }
+    }
+  }
+
+  Future<void> _handleRewardedRevive() async {
+    if (!_engine.canRevive) return;
+    final earned = await widget.adService.showRewarded(
+      RewardedPlacement.rescueRevive,
+    );
+    if (!earned || !mounted) return;
+    final res = _engine.reviveWithRescueNova();
+    if (!res.placed) return;
+    _spawnClearFx(res);
+    _waves.add(ShockWave.ring(4.0, 4.0, _palette.prismGold));
+    widget.audio.playCue(PrismSoundCue.nova);
+    _showBanner(
+      _locale == AppLocale.tr ? '✨ SON NEFES KURTARMA!' : '✨ RESCUE REVIVE!',
+      _palette.prismGold,
+    );
+    _syncBlitzTimer();
+    setState(() {});
+  }
+
+  void _openTrophyHub() {
+    unawaited(
+      showModalBottomSheet<void>(
+        context: context,
+        backgroundColor: Colors.transparent,
+        isScrollControlled: true,
+        builder: (context) => TrophyHubSheet(
+          palette: _palette,
+          locale: _locale,
+          save: _save,
+          gamesConnected: widget.gamesService.isConnected,
+          onTapConnectGames: () async {
+            await widget.gamesService.signInOptional();
+            if (mounted) setState(() {});
+          },
+        ),
+      ),
+    );
   }
 
   void _handleAnvilTap() {
@@ -562,6 +671,10 @@ class _PrismGameScreenState extends State<PrismGameScreen>
                     _buildTrayWithAnvil(p),
                     const SizedBox(height: 8),
                     _buildFooter(p),
+                    if (widget.adService.isBannerVisible) ...<Widget>[
+                      const SizedBox(height: 6),
+                      _buildSafeAdBannerSlot(p),
+                    ],
                   ],
                 ),
               ),
@@ -570,6 +683,36 @@ class _PrismGameScreenState extends State<PrismGameScreen>
               _buildFloatingDragPiece(p, draggingPiece, _dragGlobalPos!),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildSafeAdBannerSlot(PrismPalette p) {
+    return Container(
+      key: const ValueKey<String>('admob_banner_slot'),
+      height: 44,
+      decoration: BoxDecoration(
+        color: p.surface.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(11),
+        border: Border.all(color: p.ink.withValues(alpha: 0.12)),
+      ),
+      alignment: Alignment.center,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          Icon(Icons.ad_units_rounded, size: 14, color: p.mutedInk),
+          const SizedBox(width: 6),
+          Text(
+            _locale == AppLocale.tr
+                ? 'AdMob Uyarlanabilir Banner Alanı (Güvenli Bölge)'
+                : 'AdMob Adaptive Banner Safe Slot',
+            style: TextStyle(
+              color: p.mutedInk,
+              fontSize: 10.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -624,12 +767,19 @@ class _PrismGameScreenState extends State<PrismGameScreen>
           ),
         ),
         _headerChip(
+          key: const ValueKey<String>('trophy_button'),
+          p: p,
+          icon: Icons.emoji_events_rounded,
+          onTap: _openTrophyHub,
+        ),
+        const SizedBox(width: 5),
+        _headerChip(
           key: const ValueKey<String>('theme_button'),
           p: p,
           label: p.name.resolve(_locale),
           onTap: _cycleTheme,
         ),
-        const SizedBox(width: 6),
+        const SizedBox(width: 5),
         _headerChip(
           key: const ValueKey<String>('sound_button'),
           p: p,
@@ -638,7 +788,7 @@ class _PrismGameScreenState extends State<PrismGameScreen>
               : Icons.volume_off_rounded,
           onTap: _toggleSound,
         ),
-        const SizedBox(width: 6),
+        const SizedBox(width: 5),
         _headerChip(
           key: const ValueKey<String>('lang_button'),
           p: p,
@@ -1169,6 +1319,7 @@ class _PrismGameScreenState extends State<PrismGameScreen>
                             preview: _activePreview,
                             novaMode: _novaMode,
                             novaHover: _novaHover,
+                            isFever: _engine.isFeverActive,
                           ),
                         );
                       },
@@ -1283,7 +1434,38 @@ class _PrismGameScreenState extends State<PrismGameScreen>
                   textAlign: TextAlign.center,
                   style: TextStyle(color: p.mutedInk, fontSize: 12),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 12),
+                if (_engine.canRevive) ...<Widget>[
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      key: const ValueKey<String>('revive_rewarded_button'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: p.prismGold,
+                        foregroundColor: const Color(0xFF1C0E45),
+                        padding: const EdgeInsets.symmetric(vertical: 11),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: () => unawaited(_handleRewardedRevive()),
+                      icon: const Icon(
+                        Icons.play_circle_filled_rounded,
+                        size: 18,
+                      ),
+                      label: Text(
+                        _locale == AppLocale.tr
+                            ? 'Son Nefes: 3×3 Kurtar (Ödüllü)'
+                            : 'Rescue Revive: Clear 3×3 (Rewarded)',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -1297,6 +1479,7 @@ class _PrismGameScreenState extends State<PrismGameScreen>
                       ),
                     ),
                     onPressed: () {
+                      unawaited(widget.adService.maybeShowInterstitial());
                       if (isWin &&
                           _engine.mode == GameMode.quest &&
                           _engine.questStageNumber < 24) {

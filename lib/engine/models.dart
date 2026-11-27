@@ -218,6 +218,7 @@ class MoveOutcome {
     this.refractionBeams = const <RefractionBeam>[],
     this.synthesizedCores = const <GridPoint>[],
     this.forgeTempered = false,
+    this.enteredFever = false,
     this.crackedFrostCount = 0,
     this.brokenLockCount = 0,
     this.clearedCells = const <GridPoint>[],
@@ -237,6 +238,7 @@ class MoveOutcome {
   final List<RefractionBeam> refractionBeams;
   final List<GridPoint> synthesizedCores;
   final bool forgeTempered;
+  final bool enteredFever;
   final int crackedFrostCount;
   final int brokenLockCount;
   final List<GridPoint> clearedCells;

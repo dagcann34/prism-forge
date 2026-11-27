@@ -79,6 +79,7 @@ class PrismEngine {
   double blitzSecondsLeft = blitzInitialSeconds.toDouble();
   bool isGameOver = false;
   bool isVictory = false;
+  bool reviveUsedInRun = false;
 
   List<List<BoardCell?>> get grid => _grid;
   List<PrismPiece?> get tray => List<PrismPiece?>.unmodifiable(_tray);
@@ -86,6 +87,8 @@ class PrismEngine {
   int get forgeCharge => _forgeCharge;
   bool get forgeUsedThisTurn => _forgeUsedThisTurn;
   bool get isForgeTempered => _forgedPiece != null && _forgedPiece!.isWildcard;
+  bool get isFeverActive => streak >= 3 && streakTurnsLeft > 0;
+  bool get canRevive => isGameOver && !isVictory && !reviveUsedInRun;
 
   int get totalTargets => targetCores + targetFrost + targetLocks;
   int get totalCollected => collectedCores + collectedFrost + collectedLocks;
@@ -129,6 +132,7 @@ class PrismEngine {
     blitzSecondsLeft = blitzInitialSeconds.toDouble();
     isGameOver = false;
     isVictory = false;
+    reviveUsedInRun = false;
     _forgedPiece = null;
     _forgeCharge = 0;
     _forgeUsedThisTurn = false;
@@ -796,8 +800,10 @@ class PrismEngine {
         clearedCells.add(pt);
       }
 
+      final wasFever = isFeverActive;
       streak = math.min(8, streak + 1);
       streakTurnsLeft = 3;
+      final enteredFever = !wasFever && isFeverActive;
       energy = math.min(
         100,
         energy +
@@ -829,6 +835,9 @@ class PrismEngine {
       if (triggeredResonance) {
         linePts = (linePts * 1.5).round();
       }
+      if (isFeverActive) {
+        linePts *= 2;
+      }
 
       allClear = _isBoardEmpty();
       if (allClear) {
@@ -837,6 +846,54 @@ class PrismEngine {
 
       score += linePts;
       pointsEarned += linePts;
+
+      // Step E — Prism Anvil 3-Turn Tempering Progression!
+      _forgeUsedThisTurn = false;
+      var forgeTempered = false;
+      if (!fromForge && _forgedPiece != null && _forgeCharge < forgeMaxCharge) {
+        _forgeCharge++;
+        if (_forgeCharge >= forgeMaxCharge && !_forgedPiece!.isWildcard) {
+          _forgedPiece = _forgedPiece!.copyWith(
+            isWildcard: true,
+            prismCellIndex: _forgedPiece!.prismCellIndex >= 0
+                ? _forgedPiece!.prismCellIndex
+                : 0,
+          );
+          forgeTempered = true;
+        }
+      }
+
+      // Step F — Refill tray & check victory / game over.
+      if (_tray.every((p) => p == null)) {
+        refillTray();
+      }
+
+      if (isObjectiveComplete) {
+        isVictory = true;
+      } else if (!hasAnyValidMove()) {
+        isGameOver = true;
+      }
+
+      return MoveOutcome(
+        placed: true,
+        pointsEarned: pointsEarned,
+        linesCleared: totalLines,
+        clearedRows: fullRows,
+        clearedCols: fullCols,
+        triggeredResonance: triggeredResonance,
+        triggeredPrisms: triggeredPrisms,
+        refractionBeams: refractionBeams,
+        synthesizedCores: synth.cores,
+        forgeTempered: forgeTempered,
+        enteredFever: enteredFever,
+        crackedFrostCount: crackedFrost,
+        brokenLockCount: brokenLocks,
+        clearedCells: clearedCells,
+        allClearBonus: allClear,
+        blitzSecondsAdded: blitzBonus,
+        objectiveCompleted: isVictory,
+        gameOver: isGameOver,
+      );
     } else {
       if (streakTurnsLeft > 0) {
         streakTurnsLeft--;
@@ -891,6 +948,55 @@ class PrismEngine {
       objectiveCompleted: isVictory,
       gameOver: isGameOver,
     );
+  }
+
+  /// Rewarded Ad "Son Nefes / Rescue Revive" (max 1 per run): vaporizes the
+  /// center 3x3 zone, restores 100% Tactical Energy (+15s in Blitz), and
+  /// resumes gameplay cleanly.
+  MoveOutcome reviveWithRescueNova() {
+    if (!canRevive) return const MoveOutcome(placed: false);
+    reviveUsedInRun = true;
+    isGameOver = false;
+
+    final cleared = <GridPoint>[];
+    for (var y = 2; y <= 5; y++) {
+      for (var x = 2; x <= 5; x++) {
+        if (x < 3 || x > 5 || y < 3 || y > 5) continue;
+        final cell = _grid[y][x];
+        if (cell == null) continue;
+        if (cell.isPrismCore) {
+          collectedCores = math.min(targetCores, collectedCores + 1);
+        }
+        if (cell.frostHits > 0) {
+          collectedFrost = math.min(targetFrost, collectedFrost + 1);
+        }
+        if (cell.isLocked) {
+          collectedLocks = math.min(targetLocks, collectedLocks + 1);
+        }
+        _grid[y][x] = null;
+        cleared.add(GridPoint(x, y));
+      }
+    }
+
+    energy = 100;
+    if (mode == GameMode.blitz && blitzSecondsLeft <= 0) {
+      blitzSecondsLeft = 20.0;
+    }
+    if (isObjectiveComplete) {
+      isVictory = true;
+    }
+
+    return MoveOutcome(
+      placed: true,
+      clearedCells: cleared,
+      objectiveCompleted: isVictory,
+      gameOver: false,
+    );
+  }
+
+  /// Rewarded Ad optional boost: refills Tactical Energy to 100%.
+  void grantEnergyBoost() {
+    energy = 100;
   }
 
   /// Unleashes 3x3 Quantum Nova at ([cx], [cy]) for 100% energy, vaporizing
