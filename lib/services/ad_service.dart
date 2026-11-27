@@ -129,7 +129,9 @@ class PlatformAdService implements AdService {
         ConsentRequestParameters(),
         () async {
           try {
-            ConsentForm.loadAndShowConsentFormIfRequired((formError) async {
+            await ConsentForm.loadAndShowConsentFormIfRequired((
+              formError,
+            ) async {
               await _refreshPrivacyOptionsFlag();
               await _initMobileAdsIfAllowed();
               if (!completer.isCompleted) completer.complete();
@@ -195,7 +197,7 @@ class PlatformAdService implements AdService {
     if (!_isMobilePlatform) return;
     final completer = Completer<void>();
     try {
-      ConsentForm.showPrivacyOptionsForm((formError) async {
+      await ConsentForm.showPrivacyOptionsForm((formError) async {
         await _refreshPrivacyOptionsFlag();
         await _initMobileAdsIfAllowed();
         if (!completer.isCompleted) completer.complete();
@@ -329,7 +331,7 @@ class PlatformAdService implements AdService {
         },
       );
     } catch (_) {
-      ad.dispose();
+      await ad.dispose();
       _preloadRewarded();
       if (!completer.isCompleted) completer.complete(false);
     }
@@ -366,7 +368,7 @@ class PlatformAdService implements AdService {
     try {
       await ad.show();
     } catch (_) {
-      ad.dispose();
+      await ad.dispose();
       _preloadInterstitial();
       if (!completer.isCompleted) completer.complete();
     }
@@ -404,7 +406,7 @@ class PlatformAdService implements AdService {
     final old = _bannerAd;
     _bannerAd = null;
     _bannerLoaded = false;
-    old?.dispose();
+    await old?.dispose();
 
     final banner = BannerAd(
       adUnitId: _bannerUnitId,
