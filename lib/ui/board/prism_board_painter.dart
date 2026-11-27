@@ -1,12 +1,6 @@
-/// High-craft "Cıvıl Cıvıl" 3D crystal gem & optical laser CustomPainters:
-/// - Chromatic jewel rims (no muddy black strokes), specular pill gleam & caustic bounce
-/// - Iridescent Rainbow Wildcard Crystal Glass (tempered in the Prism Anvil)
-/// - Rotating ★ Prism Core with radiant aura
-/// - Translucent ❄ 2-Hit Frost lattice & gold 🔒 Locked Keystone clasps
-/// - Live pre-drop 2x2 Synthesis quad outline + ghost ★, Row/Col Resonance glow,
-///   and ★→★ golden Optical Chain-Refraction laser beams!
-/// - Animated background ambiance (sunlit bubbles, candy sparkles, blossom petals, neon bokeh)
-/// - Confetti-star & diamond shard particles + laser beam shockwaves
+/// High-craft 60fps 3D crystal gem, 12-atmosphere cross-fading backdrop,
+/// damped-spring block pop, stained-glass specular shimmer, and staggered
+/// optical laser CustomPainters for PRISM FORGE (Prizma Döküm).
 library;
 
 import 'dart:math' as math;
@@ -18,7 +12,7 @@ import '../../engine/models.dart';
 import '../../engine/prism_engine.dart';
 import '../../theme/prism_themes.dart';
 
-/// Animated diamond shard or twinkling 4-point confetti star particle.
+/// Animated faceted crystal shard or twinkling 4-point confetti star particle.
 class ShardParticle {
   ShardParticle({
     required this.gx,
@@ -44,31 +38,39 @@ class ShardParticle {
   double life = 1.0;
 }
 
-/// Shockwave visual (row beam, column beam, optical laser link, or prism ring).
+/// Shockwave visual (row beam, column beam, staggered optical laser link, or double prism ring).
 class ShockWave {
   ShockWave.row(this.index, this.color)
     : kind = _WaveKind.row,
       gx = 0,
       gy = 0,
       gx2 = 0,
-      gy2 = 0;
+      gy2 = 0,
+      delay = 0.0;
 
   ShockWave.col(this.index, this.color)
     : kind = _WaveKind.col,
       gx = 0,
       gy = 0,
       gx2 = 0,
-      gy2 = 0;
+      gy2 = 0,
+      delay = 0.0;
 
-  ShockWave.ring(this.gx, this.gy, this.color)
+  ShockWave.ring(this.gx, this.gy, this.color, {this.delay = 0.0})
     : kind = _WaveKind.ring,
       index = 0,
       gx2 = 0,
       gy2 = 0;
 
-  ShockWave.beam(this.gx, this.gy, this.gx2, this.gy2, this.color)
-    : kind = _WaveKind.beam,
-      index = 0;
+  ShockWave.beam(
+    this.gx,
+    this.gy,
+    this.gx2,
+    this.gy2,
+    this.color, {
+    this.delay = 0.0,
+  }) : kind = _WaveKind.beam,
+       index = 0;
 
   final _WaveKind kind;
   final int index;
@@ -77,35 +79,76 @@ class ShockWave {
   final double gx2;
   final double gy2;
   final Color color;
+
+  /// Optional stagger delay in seconds (used for hop-by-hop laser ricochets).
+  double delay;
   double life = 1.0;
 }
 
 enum _WaveKind { row, col, ring, beam }
 
-/// Animated joyful background canvas behind the entire screen.
+/// Animated 12-atmosphere background canvas with smooth 650ms theme cross-fade.
 class AmbientBackdropPainter extends CustomPainter {
-  const AmbientBackdropPainter({required this.palette, required this.phase});
+  const AmbientBackdropPainter({
+    required this.palette,
+    required this.phase,
+    this.previousPalette,
+    this.transitionT = 1.0,
+  });
 
   final PrismPalette palette;
+  final PrismPalette? previousPalette;
+  final double transitionT;
   final double phase;
 
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
+    final t = transitionT.clamp(0.0, 1.0);
+    final prev = previousPalette;
+    final List<Color> gradColors;
+    if (prev != null && prev.id != palette.id && t < 1.0) {
+      gradColors = <Color>[
+        for (var i = 0; i < 3; i++)
+          Color.lerp(
+            prev.backgroundGradient[i % prev.backgroundGradient.length],
+            palette.backgroundGradient[i % palette.backgroundGradient.length],
+            t,
+          )!,
+      ];
+    } else {
+      gradColors = palette.backgroundGradient;
+    }
+
     canvas.drawRect(
       rect,
       Paint()
         ..shader = LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: palette.backgroundGradient,
+          colors: gradColors,
         ).createShader(rect),
     );
 
-    switch (palette.ambientStyle) {
+    if (prev != null && prev.id != palette.id && t < 1.0) {
+      _paintAmbientStyle(canvas, size, prev.ambientStyle, 1.0 - t);
+      _paintAmbientStyle(canvas, size, palette.ambientStyle, t);
+    } else {
+      _paintAmbientStyle(canvas, size, palette.ambientStyle, 1.0);
+    }
+  }
+
+  void _paintAmbientStyle(
+    Canvas canvas,
+    Size size,
+    PrismAmbientStyle style,
+    double weight,
+  ) {
+    if (weight <= 0.01) return;
+    switch (style) {
       case PrismAmbientStyle.sunBubbles:
-        // Soft sunlit rays + rising translucent lagoon bubbles.
-        final rayPaint = Paint()..color = Colors.white.withValues(alpha: 0.13);
+        final rayPaint = Paint()
+          ..color = Colors.white.withValues(alpha: 0.13 * weight);
         for (var r = 0; r < 2; r++) {
           final sway = math.sin(phase * math.pi * 2 + r) * 18;
           final x0 = size.width * (0.18 + r * 0.42) + sway;
@@ -129,12 +172,12 @@ class AmbientBackdropPainter extends CustomPainter {
           canvas.drawCircle(
             Offset(bx, by),
             rad,
-            Paint()..color = Colors.white.withValues(alpha: 0.22),
+            Paint()..color = Colors.white.withValues(alpha: 0.22 * weight),
           );
           canvas.drawCircle(
             Offset(bx - rad * 0.3, by - rad * 0.3),
             rad * 0.25,
-            Paint()..color = Colors.white.withValues(alpha: 0.55),
+            Paint()..color = Colors.white.withValues(alpha: 0.55 * weight),
           );
         }
 
@@ -148,17 +191,17 @@ class AmbientBackdropPainter extends CustomPainter {
             canvas,
             Offset(sx, sy),
             rad,
-            Colors.white.withValues(alpha: 0.35 + 0.35 * pulse),
+            Colors.white.withValues(alpha: (0.35 + 0.35 * pulse) * weight),
           );
         }
 
       case PrismAmbientStyle.blossomPetals:
         final petalPaint = Paint()
-          ..color = const Color(0xFFFFD1E6).withValues(alpha: 0.55);
-        for (var i = 0; i < 11; i++) {
+          ..color = const Color(0xFFFFD1E6).withValues(alpha: 0.58 * weight);
+        for (var i = 0; i < 12; i++) {
           final px =
               size.width * (((i * 0.19) % 0.9) + 0.05) +
-              math.sin(phase * math.pi * 2 + i) * 14;
+              math.sin(phase * math.pi * 2 + i) * 16;
           final py =
               ((phase * size.height * 0.8 + i * 77.0) % (size.height + 30)) -
               15;
@@ -186,7 +229,220 @@ class AmbientBackdropPainter extends CustomPainter {
           canvas.drawCircle(
             Offset(cx, cy),
             r,
-            Paint()..color = bokehColors[i % 3].withValues(alpha: 0.12),
+            Paint()..color = bokehColors[i % 3].withValues(alpha: 0.13 * weight),
+          );
+        }
+
+      case PrismAmbientStyle.goldenEmbers:
+        // Warm diagonal sun shafts + ascending golden dust motes.
+        final beamPaint = Paint()
+          ..color = const Color(0xFFFFF8C4).withValues(alpha: 0.16 * weight);
+        for (var r = 0; r < 2; r++) {
+          final shift = math.cos(phase * math.pi * 2 + r * 1.4) * 20;
+          final x0 = size.width * (0.28 + r * 0.44) + shift;
+          canvas.drawPath(
+            Path()
+              ..moveTo(x0, 0)
+              ..lineTo(x0 + 75, 0)
+              ..lineTo(x0 - 85, size.height)
+              ..lineTo(x0 - 160, size.height)
+              ..close(),
+            beamPaint,
+          );
+        }
+        for (var i = 0; i < 15; i++) {
+          final ex =
+              size.width * (((i * 0.163) % 0.90) + 0.05) +
+              math.sin(phase * math.pi * 2 + i * 0.9) * 12;
+          final ey =
+              size.height -
+              ((phase * size.height * 0.85 + i * 64.0) % (size.height + 30)) +
+              15;
+          final rad = 2.6 + (i % 3) * 1.8;
+          canvas.drawCircle(
+            Offset(ex, ey),
+            rad,
+            Paint()
+              ..color = const Color(0xFFFFF3A0).withValues(alpha: 0.65 * weight),
+          );
+        }
+
+      case PrismAmbientStyle.auroraRibbons:
+        // Translucent flowing emerald & cyan northern-lights curtains.
+        const ribbonColors = <Color>[Color(0xFF2BF5B4), Color(0xFF00E5FF)];
+        for (var r = 0; r < 2; r++) {
+          final baseY = size.height * (0.24 + r * 0.28);
+          final path = Path()..moveTo(0, baseY);
+          final cp1Y =
+              baseY + math.sin(phase * math.pi * 2 + r * 1.5) * 44 - 20;
+          final cp2Y =
+              baseY + math.cos(phase * math.pi * 2 + r * 1.2) * 44 + 14;
+          path.cubicTo(
+            size.width * 0.33,
+            cp1Y,
+            size.width * 0.67,
+            cp2Y,
+            size.width,
+            baseY - 12,
+          );
+          path.lineTo(size.width, baseY + 66);
+          path.cubicTo(
+            size.width * 0.67,
+            cp2Y + 62,
+            size.width * 0.33,
+            cp1Y + 62,
+            0,
+            baseY + 56,
+          );
+          path.close();
+          canvas.drawPath(
+            path,
+            Paint()..color = ribbonColors[r].withValues(alpha: 0.16 * weight),
+          );
+        }
+        for (var i = 0; i < 10; i++) {
+          final sx = size.width * (((i * 0.21) % 0.92) + 0.04);
+          final sy = size.height * (((i * 0.13) % 0.72) + 0.05);
+          final tw = 0.4 + 0.6 * math.sin(phase * math.pi * 2 + i * 1.3).abs();
+          canvas.drawCircle(
+            Offset(sx, sy),
+            1.8 + (i % 2) * 1.2,
+            Paint()..color = Colors.white.withValues(alpha: 0.45 * tw * weight),
+          );
+        }
+
+      case PrismAmbientStyle.frostCrystals:
+        final stroke = Paint()
+          ..color = Colors.white.withValues(alpha: 0.58 * weight)
+          ..strokeWidth = 1.5
+          ..strokeCap = StrokeCap.round;
+        for (var i = 0; i < 10; i++) {
+          final cx =
+              size.width * (((i * 0.193) % 0.90) + 0.05) +
+              math.sin(phase * math.pi * 2 + i) * 10;
+          final cy =
+              ((phase * size.height * 0.65 + i * 82.0) % (size.height + 30)) -
+              15;
+          final r = 5.5 + (i % 3) * 2.8;
+          final rot = phase * math.pi + i * 0.6;
+          for (var k = 0; k < 3; k++) {
+            final a = rot + (math.pi * k) / 3.0;
+            canvas.drawLine(
+              Offset(cx - math.cos(a) * r, cy - math.sin(a) * r),
+              Offset(cx + math.cos(a) * r, cy + math.sin(a) * r),
+              stroke,
+            );
+          }
+        }
+
+      case PrismAmbientStyle.biolumeMotes:
+        const reefColors = <Color>[Color(0xFF00F5D4), Color(0xFFFF5EC4)];
+        for (var i = 0; i < 14; i++) {
+          final mx =
+              size.width * (((i * 0.181) % 0.90) + 0.05) +
+              math.sin(phase * math.pi * 2 + i * 0.8) * 14;
+          final my =
+              size.height * (((i * 0.137) % 0.90) + 0.05) +
+              math.cos(phase * math.pi * 2 + i * 1.1) * 12;
+          final glow = 0.5 + 0.5 * math.sin(phase * math.pi * 2 + i * 1.7);
+          final col = reefColors[i % 2];
+          canvas.drawCircle(
+            Offset(mx, my),
+            11.0 + glow * 8.0,
+            Paint()..color = col.withValues(alpha: 0.12 * glow * weight),
+          );
+          canvas.drawCircle(
+            Offset(mx, my),
+            3.0 + (i % 3),
+            Paint()..color = col.withValues(alpha: 0.65 * weight),
+          );
+        }
+
+      case PrismAmbientStyle.fireflySparks:
+        for (var i = 0; i < 14; i++) {
+          final t = phase * math.pi * 2 + i * 0.95;
+          final fx = size.width * (((i * 0.17) % 0.86) + 0.07) + math.sin(t) * 22;
+          final fy =
+              size.height * (((i * 0.19) % 0.86) + 0.07) + math.sin(t * 2) * 14;
+          final pulse = 0.35 + 0.65 * math.sin(t * 1.5).abs();
+          canvas.drawCircle(
+            Offset(fx, fy),
+            9.5 * pulse,
+            Paint()
+              ..color = const Color(0xFFD9FF66)
+                  .withValues(alpha: 0.18 * pulse * weight),
+          );
+          canvas.drawCircle(
+            Offset(fx, fy),
+            2.6,
+            Paint()
+              ..color = const Color(0xFFFFF59D)
+                  .withValues(alpha: 0.82 * pulse * weight),
+          );
+        }
+
+      case PrismAmbientStyle.prismRain:
+        const rainColors = <Color>[
+          Color(0xFFE066FF),
+          Color(0xFF00F0FF),
+          Color(0xFFFFE44D),
+        ];
+        for (var i = 0; i < 12; i++) {
+          final progress = (phase * 1.4 + i * 0.17) % 1.0;
+          final x0 = size.width * (((i * 0.213) % 0.94) + 0.03);
+          final y0 = -40.0 + progress * (size.height + 90.0);
+          canvas.drawLine(
+            Offset(x0, y0),
+            Offset(x0 - 18, y0 + 46),
+            Paint()
+              ..color = rainColors[i % 3].withValues(alpha: 0.34 * weight)
+              ..strokeWidth = 2.4
+              ..strokeCap = StrokeCap.round,
+          );
+        }
+
+      case PrismAmbientStyle.forgeSparks:
+        const emberColors = <Color>[Color(0xFFFF8A5B), Color(0xFFFFE54D)];
+        for (var i = 0; i < 16; i++) {
+          final prog = (phase * 1.2 + i * 0.13) % 1.0;
+          final ex =
+              size.width * (((i * 0.157) % 0.90) + 0.05) +
+              math.sin(prog * math.pi * 3 + i) * 14;
+          final ey = size.height * (1.05 - prog * 1.12);
+          final fade = math.sin(prog * math.pi).clamp(0.0, 1.0);
+          canvas.drawCircle(
+            Offset(ex, ey),
+            2.2 + (i % 3) * 1.1,
+            Paint()
+              ..color = emberColors[i % 2].withValues(alpha: 0.78 * fade * weight),
+          );
+        }
+
+      case PrismAmbientStyle.stardustNebula:
+        // Soft astral nebula clouds + twinkling 4-point constellation stars.
+        const nebColors = <Color>[Color(0xFFC77DFF), Color(0xFF00F0FF)];
+        for (var n = 0; n < 3; n++) {
+          final nx = size.width * (0.2 + n * 0.32);
+          final ny =
+              size.height * (0.22 + (n % 2) * 0.44) +
+              math.sin(phase * math.pi * 2 + n) * 12;
+          canvas.drawCircle(
+            Offset(nx, ny),
+            64.0 + n * 16.0,
+            Paint()..color = nebColors[n % 2].withValues(alpha: 0.10 * weight),
+          );
+        }
+        for (var i = 0; i < 16; i++) {
+          final sx = size.width * (((i * 0.197) % 0.92) + 0.04);
+          final sy = size.height * (((i * 0.131) % 0.90) + 0.05);
+          final tw = 0.4 + 0.6 * math.sin(phase * math.pi * 2 + i * 1.4).abs();
+          _draw4PointStar(
+            canvas,
+            Offset(sx, sy),
+            (3.4 + (i % 3) * 2.2) * tw,
+            (i % 3 == 0 ? const Color(0xFFFFF066) : Colors.white).withValues(
+              alpha: 0.75 * tw * weight,
+            ),
           );
         }
     }
@@ -194,7 +450,10 @@ class AmbientBackdropPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant AmbientBackdropPainter oldDelegate) =>
-      oldDelegate.palette.id != palette.id || oldDelegate.phase != phase;
+      oldDelegate.palette.id != palette.id ||
+      oldDelegate.previousPalette?.id != previousPalette?.id ||
+      oldDelegate.transitionT != transitionT ||
+      oldDelegate.phase != phase;
 }
 
 void _draw4PointStar(Canvas canvas, Offset center, double radius, Color color) {
@@ -211,7 +470,8 @@ void _draw4PointStar(Canvas canvas, Offset center, double radius, Color color) {
   canvas.drawPath(p, Paint()..color = color);
 }
 
-/// Shared jelly-crystal gem block drawing helper for board & tray pieces.
+/// Shared jelly-crystal gem block drawing helper for board & tray pieces,
+/// with optional damped-spring scale pop & periodic diagonal glass shimmer.
 void paintCrystalGem({
   required Canvas canvas,
   required Rect cellRect,
@@ -223,7 +483,17 @@ void paintCrystalGem({
   double pulsePhase = 0.0,
   double opacity = 1.0,
   bool isGhost = false,
+  double scale = 1.0,
+  double shimmerOffset = -1.0,
 }) {
+  final bool scaled = (scale - 1.0).abs() > 0.002;
+  if (scaled) {
+    canvas.save();
+    canvas.translate(cellRect.center.dx, cellRect.center.dy);
+    canvas.scale(scale, scale);
+    canvas.translate(-cellRect.center.dx, -cellRect.center.dy);
+  }
+
   final pad = cellRect.width * 0.06;
   final rect = cellRect.deflate(pad);
   final radius = Radius.circular(math.max(4.5, rect.width * 0.24));
@@ -246,6 +516,7 @@ void paintCrystalGem({
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2.0,
     );
+    if (scaled) canvas.restore();
     return;
   }
 
@@ -305,6 +576,24 @@ void paintCrystalGem({
         stops: const <double>[0.0, 0.58, 1.0],
       ).createShader(innerRect),
   );
+
+  // 3b. Periodic diagonal glass specular glint wave across the gem mosaic.
+  if (shimmerOffset >= 0.0 && shimmerOffset <= 1.0) {
+    final sheenAlpha = math.sin(shimmerOffset * math.pi) * 0.24 * opacity;
+    if (sheenAlpha > 0.01) {
+      canvas.save();
+      canvas.clipRRect(rrect);
+      final sx = rect.left - rect.width * 0.4 + shimmerOffset * rect.width * 1.8;
+      canvas.drawLine(
+        Offset(sx, rect.top - 4),
+        Offset(sx - rect.width * 0.45, rect.bottom + 4),
+        Paint()
+          ..color = Colors.white.withValues(alpha: sheenAlpha)
+          ..strokeWidth = rect.width * 0.26,
+      );
+      canvas.restore();
+    }
+  }
 
   // 4. Glossy top-left pill specular + tiny sparkle dot.
   canvas.drawLine(
@@ -427,10 +716,14 @@ void paintCrystalGem({
         ..strokeWidth = 1.8,
     );
   }
+
+  if (scaled) {
+    canvas.restore();
+  }
 }
 
-/// Renders the 8x8 PRISM FORGE board, pre-drop 2x2 Synthesis & ★→★ Laser preview,
-/// confetti-star particles & laser shockwaves.
+/// Renders the 8x8 PRISM FORGE board, per-cell spring bounce, stained-glass sheen,
+/// pre-drop 2x2 Synthesis & ★→★ Laser preview, faceted shards & staggered beams.
 class PrismBoardPainter extends CustomPainter {
   const PrismBoardPainter({
     required this.grid,
@@ -438,6 +731,8 @@ class PrismBoardPainter extends CustomPainter {
     required this.phase,
     required this.particles,
     required this.waves,
+    this.cellPopProgress = const <GridPoint, double>{},
+    this.reducedMotion = false,
     this.hoverPiece,
     this.preview,
     this.novaMode = false,
@@ -450,6 +745,8 @@ class PrismBoardPainter extends CustomPainter {
   final double phase;
   final List<ShardParticle> particles;
   final List<ShockWave> waves;
+  final Map<GridPoint, double> cellPopProgress;
+  final bool reducedMotion;
   final PrismPiece? hoverPiece;
   final PlacementPreview? preview;
   final bool novaMode;
@@ -473,24 +770,24 @@ class PrismBoardPainter extends CustomPainter {
         outerRRect.deflate(1.5),
         Paint()
           ..shader = SweepGradient(
-            colors: const <Color>[
-              Color(0xFF00E5FF),
-              Color(0xFFFF38B8),
-              Color(0xFFFFE424),
-              Color(0xFF34E870),
-              Color(0xFF9D6BFF),
-              Color(0xFF00E5FF),
+            colors: <Color>[
+              palette.feverAccent,
+              const Color(0xFFFF38B8),
+              palette.prismGold,
+              const Color(0xFF34E870),
+              palette.resonanceColor,
+              palette.feverAccent,
             ],
             transform: GradientRotation(phase * math.pi * 2),
           ).createShader(Offset.zero & size)
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 3.8,
+          ..strokeWidth = 4.0,
       );
     } else {
       canvas.drawRRect(
         outerRRect.deflate(1),
         Paint()
-          ..color = palette.boardBorderGlow.withValues(alpha: 0.55)
+          ..color = palette.boardBorderGlow.withValues(alpha: 0.60)
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2.0,
       );
@@ -564,7 +861,7 @@ class PrismBoardPainter extends CustomPainter {
       }
     }
 
-    // 4. Placed crystal blocks.
+    // 4. Placed crystal blocks with damped-spring bounce + diagonal glass sheen.
     for (var y = 0; y < PrismEngine.gridSize; y++) {
       for (var x = 0; x < PrismEngine.gridSize; x++) {
         final cell = grid[y][x];
@@ -575,6 +872,24 @@ class PrismBoardPainter extends CustomPainter {
           cellSize,
           cellSize,
         );
+
+        var cellScale = 1.0;
+        if (!reducedMotion) {
+          final popT = cellPopProgress[GridPoint(x, y)];
+          if (popT != null && popT < 1.0) {
+            cellScale =
+                1.0 - 0.38 * math.exp(-7.5 * popT) * math.cos(popT * math.pi * 2.4);
+          }
+        }
+
+        var shimmer = -1.0;
+        if (!reducedMotion) {
+          final wave = ((phase * 1.8 - (x + y) * 0.045) % 1.0 + 1.0) % 1.0;
+          if (wave < 0.14) {
+            shimmer = wave / 0.14;
+          }
+        }
+
         paintCrystalGem(
           canvas: canvas,
           cellRect: rect,
@@ -584,6 +899,8 @@ class PrismBoardPainter extends CustomPainter {
           isLocked: cell.isLocked,
           isWildcard: cell.isWildcard,
           pulsePhase: phase,
+          scale: cellScale,
+          shimmerOffset: shimmer,
         );
 
         final willClear =
@@ -712,9 +1029,10 @@ class PrismBoardPainter extends CustomPainter {
       );
     }
 
-    // 7. Shockwaves & Optical Laser Beams.
+    // 7. Shockwaves, Double Concentric Rings & Staggered Optical Laser Beams.
     for (final w in waves) {
-      final alpha = (w.life * 0.78).clamp(0.0, 1.0).toDouble();
+      if (w.delay > 0.0) continue;
+      final alpha = (w.life * 0.82).clamp(0.0, 1.0).toDouble();
       if (w.kind == _WaveKind.row) {
         canvas.drawRect(
           Rect.fromLTWH(
@@ -740,16 +1058,19 @@ class PrismBoardPainter extends CustomPainter {
           boardPadding + w.gx * cellSize,
           boardPadding + w.gy * cellSize,
         );
-        final p2 = Offset(
+        final p2Full = Offset(
           boardPadding + w.gx2 * cellSize,
           boardPadding + w.gy2 * cellSize,
         );
+        // First 26% of lifetime extends the beam head swiftly from p1 -> p2!
+        final headT = ((1.0 - w.life) / 0.26).clamp(0.0, 1.0);
+        final p2 = Offset.lerp(p1, p2Full, Curves.easeOutCubic.transform(headT))!;
         canvas.drawLine(
           p1,
           p2,
           Paint()
             ..color = w.color.withValues(alpha: alpha)
-            ..strokeWidth = 9.0 * w.life
+            ..strokeWidth = 11.0 * w.life
             ..strokeCap = StrokeCap.round,
         );
         canvas.drawLine(
@@ -757,26 +1078,42 @@ class PrismBoardPainter extends CustomPainter {
           p2,
           Paint()
             ..color = Colors.white.withValues(alpha: alpha)
-            ..strokeWidth = 3.0 * w.life
+            ..strokeWidth = 3.2 * w.life
             ..strokeCap = StrokeCap.round,
         );
+        _draw4PointStar(
+          canvas,
+          p2,
+          cellSize * 0.36 * w.life,
+          Colors.white.withValues(alpha: alpha),
+        );
       } else {
-        final radius = (1.0 - w.life) * cellSize * 3.5;
+        final eased = 1.0 - math.pow(w.life, 3.0).toDouble();
+        final radius = eased * cellSize * 3.6;
+        final center = Offset(
+          boardPadding + w.gx * cellSize,
+          boardPadding + w.gy * cellSize,
+        );
         canvas.drawCircle(
-          Offset(
-            boardPadding + w.gx * cellSize,
-            boardPadding + w.gy * cellSize,
-          ),
+          center,
           radius,
           Paint()
             ..color = w.color.withValues(alpha: alpha)
             ..style = PaintingStyle.stroke
-            ..strokeWidth = 4.2 * w.life,
+            ..strokeWidth = 4.4 * w.life,
+        );
+        canvas.drawCircle(
+          center,
+          radius * 0.68,
+          Paint()
+            ..color = Colors.white.withValues(alpha: alpha * 0.72)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2.0 * w.life,
         );
       }
     }
 
-    // 8. Confetti-star & diamond crystal shard particles.
+    // 8. Confetti-star & faceted crystal diamond shard particles.
     for (final p in particles) {
       final alpha = p.life.clamp(0.0, 1.0).toDouble();
       final s = p.size * cellSize * (0.45 + alpha * 0.65);
@@ -790,7 +1127,7 @@ class PrismBoardPainter extends CustomPainter {
         _draw4PointStar(
           canvas,
           Offset.zero,
-          s * 0.85,
+          s * 0.88,
           p.color.withValues(alpha: alpha),
         );
         _draw4PointStar(
@@ -800,9 +1137,19 @@ class PrismBoardPainter extends CustomPainter {
           Colors.white.withValues(alpha: alpha),
         );
       } else {
-        canvas.drawRect(
-          Rect.fromCenter(center: Offset.zero, width: s, height: s),
-          Paint()..color = p.color.withValues(alpha: alpha),
+        final diamond = Path()
+          ..moveTo(0, -s * 0.85)
+          ..lineTo(s * 0.48, 0)
+          ..lineTo(0, s * 0.85)
+          ..lineTo(-s * 0.48, 0)
+          ..close();
+        canvas.drawPath(diamond, Paint()..color = p.color.withValues(alpha: alpha));
+        canvas.drawPath(
+          diamond,
+          Paint()
+            ..color = Colors.white.withValues(alpha: alpha * 0.55)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.0,
         );
       }
       canvas.restore();

@@ -22,6 +22,7 @@ class PrismSaveData {
     this.stats = const PlayerStats(),
     this.adsRemoved = false,
     this.themeId = PrismThemeId.ceramic,
+    this.autoStageTheme = true,
     this.locale = AppLocale.tr,
     this.soundEnabled = true,
     this.hapticsEnabled = true,
@@ -37,6 +38,7 @@ class PrismSaveData {
   final PlayerStats stats;
   final bool adsRemoved;
   final PrismThemeId themeId;
+  final bool autoStageTheme;
   final AppLocale locale;
   final bool soundEnabled;
   final bool hapticsEnabled;
@@ -52,6 +54,7 @@ class PrismSaveData {
     PlayerStats? stats,
     bool? adsRemoved,
     PrismThemeId? themeId,
+    bool? autoStageTheme,
     AppLocale? locale,
     bool? soundEnabled,
     bool? hapticsEnabled,
@@ -68,6 +71,7 @@ class PrismSaveData {
       stats: stats ?? this.stats,
       adsRemoved: adsRemoved ?? this.adsRemoved,
       themeId: themeId ?? this.themeId,
+      autoStageTheme: autoStageTheme ?? this.autoStageTheme,
       locale: locale ?? this.locale,
       soundEnabled: soundEnabled ?? this.soundEnabled,
       hapticsEnabled: hapticsEnabled ?? this.hapticsEnabled,
@@ -87,6 +91,7 @@ class PrismSaveData {
     'stats': stats.toJson(),
     'adsRemoved': adsRemoved,
     'themeId': themeId.name,
+    'autoStageTheme': autoStageTheme,
     'locale': locale.name,
     'soundEnabled': soundEnabled,
     'hapticsEnabled': hapticsEnabled,
@@ -151,6 +156,7 @@ class PrismSaveData {
       stats: stats,
       adsRemoved: json['adsRemoved'] == true,
       themeId: theme,
+      autoStageTheme: json['autoStageTheme'] != false,
       locale: json['locale'] == 'en' ? AppLocale.en : AppLocale.tr,
       soundEnabled: json['soundEnabled'] != false,
       hapticsEnabled: json['hapticsEnabled'] != false,

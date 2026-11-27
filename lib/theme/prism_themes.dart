@@ -1,8 +1,16 @@
-/// Four radiant, joyful ("cıvıl cıvıl") architectural art themes for PRISM FORGE:
-/// 1. Tropik Mercan / Coral Lagoon (sunlit turquoise, coral & rising bubbles)
-/// 2. Şeker Vitray / Candy Prism (stained-glass candy pastel & twinkling stars)
-/// 3. Bahar Bahçesi / Blossom Garden (spring meadow & cherry-blossom petals)
-/// 4. Karnaval Neon / Neon Carnival (vibrant royal-violet festival glow)
+/// Twelve dazzling, museum-grade glass & crystal art themes for PRISM FORGE:
+/// 1. Tropik Mercan / Coral Lagoon
+/// 2. Şeker Vitray / Candy Prism
+/// 3. Bahar Bahçesi / Sakura Blossom
+/// 4. Karnaval Neon / Neon Carnival
+/// 5. Altın Şafak / Solar Amber
+/// 6. Kuzey Işığı / Polar Aurora
+/// 7. Buzul Kristali / Glacier Quartz
+/// 8. Derin Mercan / Biolume Reef
+/// 9. Zümrüt Orman / Emerald Canopy
+/// 10. Ametist Vitray / Amethyst Cathedral
+/// 11. Yakut Ocak / Crimson Forge
+/// 12. Göksel Prizma / Celestial Nebula
 library;
 
 // ignore: deprecated_member_use
@@ -15,6 +23,14 @@ enum PrismAmbientStyle {
   candySparkles,
   blossomPetals,
   carnivalBokeh,
+  goldenEmbers,
+  auroraRibbons,
+  frostCrystals,
+  biolumeMotes,
+  fireflySparks,
+  prismRain,
+  forgeSparks,
+  stardustNebula,
 }
 
 class GemColorRamp {
@@ -33,6 +49,8 @@ class PrismPalette {
   const PrismPalette({
     required this.id,
     required this.name,
+    required this.fullName,
+    required this.badgeEmoji,
     required this.brightness,
     required this.backgroundGradient,
     required this.background,
@@ -49,12 +67,22 @@ class PrismPalette {
     required this.accentInk,
     required this.resonanceColor,
     required this.prismGold,
+    required this.feverAccent,
     required this.ambientStyle,
     required this.gemRamps,
   });
 
   final PrismThemeId id;
+
+  /// Compact chip label for the top header bar.
   final LocalizedText name;
+
+  /// Full poetic atmosphere name for Stage Intro banners & Theme Gallery.
+  final LocalizedText fullName;
+
+  /// Expressive realm badge glyph.
+  final String badgeEmoji;
+
   final Brightness brightness;
   final List<Color> backgroundGradient;
   final Color background;
@@ -71,6 +99,7 @@ class PrismPalette {
   final Color accentInk;
   final Color resonanceColor;
   final Color prismGold;
+  final Color feverAccent;
   final PrismAmbientStyle ambientStyle;
   final List<GemColorRamp> gemRamps;
 
@@ -100,6 +129,8 @@ class PrismThemes {
   static const PrismPalette ceramic = PrismPalette(
     id: PrismThemeId.ceramic,
     name: LocalizedText(tr: 'Tropik', en: 'Coral'),
+    fullName: LocalizedText(tr: 'Tropik Mercan', en: 'Coral Lagoon'),
+    badgeEmoji: '🌴',
     brightness: Brightness.light,
     backgroundGradient: <Color>[
       Color(0xFF38E4FF),
@@ -120,6 +151,7 @@ class PrismThemes {
     accentInk: Color(0xFFFFFFFF),
     resonanceColor: Color(0xFFFFD60A),
     prismGold: Color(0xFFFFE14D),
+    feverAccent: Color(0xFF00F0FF),
     ambientStyle: PrismAmbientStyle.sunBubbles,
     gemRamps: <GemColorRamp>[
       GemColorRamp(
@@ -159,6 +191,8 @@ class PrismThemes {
   static const PrismPalette atelier = PrismPalette(
     id: PrismThemeId.atelier,
     name: LocalizedText(tr: 'Şeker', en: 'Candy'),
+    fullName: LocalizedText(tr: 'Şeker Vitray', en: 'Candy Prism'),
+    badgeEmoji: '🍬',
     brightness: Brightness.light,
     backgroundGradient: <Color>[
       Color(0xFFFF85C0),
@@ -179,6 +213,7 @@ class PrismThemes {
     accentInk: Color(0xFFFFFFFF),
     resonanceColor: Color(0xFF00E5FF),
     prismGold: Color(0xFFFFD93D),
+    feverAccent: Color(0xFFFF9E2C),
     ambientStyle: PrismAmbientStyle.candySparkles,
     gemRamps: <GemColorRamp>[
       GemColorRamp(
@@ -214,10 +249,12 @@ class PrismThemes {
     ],
   );
 
-  /// Theme 3: Bahar Bahçesi / Blossom Garden
+  /// Theme 3: Bahar Bahçesi / Sakura Blossom
   static const PrismPalette aurora = PrismPalette(
     id: PrismThemeId.aurora,
     name: LocalizedText(tr: 'Bahar', en: 'Blossom'),
+    fullName: LocalizedText(tr: 'Bahar Bahçesi', en: 'Sakura Blossom'),
+    badgeEmoji: '🌸',
     brightness: Brightness.light,
     backgroundGradient: <Color>[
       Color(0xFF74EBD5),
@@ -238,6 +275,7 @@ class PrismThemes {
     accentInk: Color(0xFFFFFFFF),
     resonanceColor: Color(0xFFFF6B9D),
     prismGold: Color(0xFFFFD93D),
+    feverAccent: Color(0xFFFF85B3),
     ambientStyle: PrismAmbientStyle.blossomPetals,
     gemRamps: <GemColorRamp>[
       GemColorRamp(
@@ -277,6 +315,8 @@ class PrismThemes {
   static const PrismPalette obsidian = PrismPalette(
     id: PrismThemeId.obsidian,
     name: LocalizedText(tr: 'Karnaval', en: 'Carnival'),
+    fullName: LocalizedText(tr: 'Karnaval Neon', en: 'Neon Carnival'),
+    badgeEmoji: '🎡',
     brightness: Brightness.dark,
     backgroundGradient: <Color>[
       Color(0xFF231157),
@@ -297,6 +337,7 @@ class PrismThemes {
     accentInk: Color(0xFF1C0E45),
     resonanceColor: Color(0xFFFF4DFF),
     prismGold: Color(0xFFFFE438),
+    feverAccent: Color(0xFFFF38B8),
     ambientStyle: PrismAmbientStyle.carnivalBokeh,
     gemRamps: <GemColorRamp>[
       GemColorRamp(
@@ -332,6 +373,517 @@ class PrismThemes {
     ],
   );
 
+  /// Theme 5: Altın Şafak / Solar Amber
+  static const PrismPalette solarAmber = PrismPalette(
+    id: PrismThemeId.solarAmber,
+    name: LocalizedText(tr: 'Şafak', en: 'Amber'),
+    fullName: LocalizedText(tr: 'Altın Şafak', en: 'Solar Amber'),
+    badgeEmoji: '☀️',
+    brightness: Brightness.light,
+    backgroundGradient: <Color>[
+      Color(0xFFFF9A44),
+      Color(0xFFFFCE54),
+      Color(0xFFFFF2A6),
+    ],
+    background: Color(0xFFFFB84D),
+    surface: Color(0xF5FFFBF2),
+    surfaceElevated: Color(0xFFFFF2D6),
+    boardBackground: Color(0xFF3E1A0B),
+    boardBorderGlow: Color(0xFFFFD166),
+    cellBackground: Color(0xFF572611),
+    cellAltTint: Color(0xFF692F16),
+    cellBorder: Color(0x52FFB74D),
+    ink: Color(0xFF471E06),
+    mutedInk: Color(0xFF8A4B1E),
+    accent: Color(0xFFF95738),
+    accentInk: Color(0xFFFFFFFF),
+    resonanceColor: Color(0xFF00E5FF),
+    prismGold: Color(0xFFFFE64D),
+    feverAccent: Color(0xFFFFB703),
+    ambientStyle: PrismAmbientStyle.goldenEmbers,
+    gemRamps: <GemColorRamp>[
+      GemColorRamp(
+        main: Color(0xFFFF4769),
+        highlight: Color(0xFFFFB3C1),
+        shadow: Color(0xFFB8143A),
+      ),
+      GemColorRamp(
+        main: Color(0xFF00D4FF),
+        highlight: Color(0xFFBAF3FF),
+        shadow: Color(0xFF0082B3),
+      ),
+      GemColorRamp(
+        main: Color(0xFF36EA7C),
+        highlight: Color(0xFFC0FFD8),
+        shadow: Color(0xFF0FA14B),
+      ),
+      GemColorRamp(
+        main: Color(0xFFFFAE19),
+        highlight: Color(0xFFFFE89E),
+        shadow: Color(0xFFC97300),
+      ),
+      GemColorRamp(
+        main: Color(0xFFB666FF),
+        highlight: Color(0xFFE8CCFF),
+        shadow: Color(0xFF7326C9),
+      ),
+      GemColorRamp(
+        main: Color(0xFFFFF04D),
+        highlight: Color(0xFFFFFCCB),
+        shadow: Color(0xFFC9A700),
+      ),
+    ],
+  );
+
+  /// Theme 6: Kuzey Işığı / Polar Aurora
+  static const PrismPalette polarAurora = PrismPalette(
+    id: PrismThemeId.polarAurora,
+    name: LocalizedText(tr: 'Kuzey', en: 'Aurora'),
+    fullName: LocalizedText(tr: 'Kuzey Işığı', en: 'Polar Aurora'),
+    badgeEmoji: '🌌',
+    brightness: Brightness.dark,
+    backgroundGradient: <Color>[
+      Color(0xFF071A36),
+      Color(0xFF0E3B5E),
+      Color(0xFF136F75),
+    ],
+    background: Color(0xFF0A2847),
+    surface: Color(0xEB0F2C4D),
+    surfaceElevated: Color(0xFF163F66),
+    boardBackground: Color(0xFF06182B),
+    boardBorderGlow: Color(0xFF48F7C7),
+    cellBackground: Color(0xFF0D2B47),
+    cellAltTint: Color(0xFF133859),
+    cellBorder: Color(0x5248F7C7),
+    ink: Color(0xFFF2FDFF),
+    mutedInk: Color(0xFFA8E1F0),
+    accent: Color(0xFF2BF5B4),
+    accentInk: Color(0xFF06182B),
+    resonanceColor: Color(0xFFC77DFF),
+    prismGold: Color(0xFFFFE548),
+    feverAccent: Color(0xFF00E5FF),
+    ambientStyle: PrismAmbientStyle.auroraRibbons,
+    gemRamps: <GemColorRamp>[
+      GemColorRamp(
+        main: Color(0xFF2CF5B6),
+        highlight: Color(0xFFC2FFE9),
+        shadow: Color(0xFF00A373),
+      ),
+      GemColorRamp(
+        main: Color(0xFFFF4F8B),
+        highlight: Color(0xFFFFC0D6),
+        shadow: Color(0xFFBD1954),
+      ),
+      GemColorRamp(
+        main: Color(0xFF33CCFF),
+        highlight: Color(0xFFC4F0FF),
+        shadow: Color(0xFF007FB8),
+      ),
+      GemColorRamp(
+        main: Color(0xFFFFD92E),
+        highlight: Color(0xFFFFF5B5),
+        shadow: Color(0xFFC99500),
+      ),
+      GemColorRamp(
+        main: Color(0xFFC270FF),
+        highlight: Color(0xFFECD1FF),
+        shadow: Color(0xFF7B2EC9),
+      ),
+      GemColorRamp(
+        main: Color(0xFFFF8833),
+        highlight: Color(0xFFFFD5B3),
+        shadow: Color(0xFFC94F00),
+      ),
+    ],
+  );
+
+  /// Theme 7: Buzul Kristali / Glacier Quartz
+  static const PrismPalette glacierCrystal = PrismPalette(
+    id: PrismThemeId.glacierCrystal,
+    name: LocalizedText(tr: 'Buzul', en: 'Glacier'),
+    fullName: LocalizedText(tr: 'Buzul Kristali', en: 'Glacier Quartz'),
+    badgeEmoji: '❄️',
+    brightness: Brightness.light,
+    backgroundGradient: <Color>[
+      Color(0xFF8FD8FF),
+      Color(0xFFCCF0FF),
+      Color(0xFFDFD1FF),
+    ],
+    background: Color(0xFFAEE2FF),
+    surface: Color(0xF5F6FCFF),
+    surfaceElevated: Color(0xFFE3F5FF),
+    boardBackground: Color(0xFF0E2F54),
+    boardBorderGlow: Color(0xFF8CE8FF),
+    cellBackground: Color(0xFF164273),
+    cellAltTint: Color(0xFF1E528A),
+    cellBorder: Color(0x528CE8FF),
+    ink: Color(0xFF0B2948),
+    mutedInk: Color(0xFF39648F),
+    accent: Color(0xFF008CFF),
+    accentInk: Color(0xFFFFFFFF),
+    resonanceColor: Color(0xFFFF5CA8),
+    prismGold: Color(0xFFFFE047),
+    feverAccent: Color(0xFF5CEEFF),
+    ambientStyle: PrismAmbientStyle.frostCrystals,
+    gemRamps: <GemColorRamp>[
+      GemColorRamp(
+        main: Color(0xFFFF4D88),
+        highlight: Color(0xFFFFC2D6),
+        shadow: Color(0xFFBD1753),
+      ),
+      GemColorRamp(
+        main: Color(0xFF00E0FF),
+        highlight: Color(0xFFC2F8FF),
+        shadow: Color(0xFF008EB8),
+      ),
+      GemColorRamp(
+        main: Color(0xFFFF9E2C),
+        highlight: Color(0xFFFFE0B0),
+        shadow: Color(0xFFC96100),
+      ),
+      GemColorRamp(
+        main: Color(0xFF38EB7D),
+        highlight: Color(0xFFC4FFDA),
+        shadow: Color(0xFF10A34D),
+      ),
+      GemColorRamp(
+        main: Color(0xFFFFE138),
+        highlight: Color(0xFFFFF7BD),
+        shadow: Color(0xFFC99E00),
+      ),
+      GemColorRamp(
+        main: Color(0xFFAC6BFF),
+        highlight: Color(0xFFE5D1FF),
+        shadow: Color(0xFF6A29C9),
+      ),
+    ],
+  );
+
+  /// Theme 8: Derin Mercan / Biolume Reef
+  static const PrismPalette abyssalReef = PrismPalette(
+    id: PrismThemeId.abyssalReef,
+    name: LocalizedText(tr: 'Okyanus', en: 'Biolume'),
+    fullName: LocalizedText(tr: 'Derin Mercan', en: 'Biolume Reef'),
+    badgeEmoji: '🪼',
+    brightness: Brightness.dark,
+    backgroundGradient: <Color>[
+      Color(0xFF051937),
+      Color(0xFF08376B),
+      Color(0xFF0A5E7A),
+    ],
+    background: Color(0xFF06254A),
+    surface: Color(0xEB0A2E52),
+    surfaceElevated: Color(0xFF114270),
+    boardBackground: Color(0xFF04152B),
+    boardBorderGlow: Color(0xFF00F5D4),
+    cellBackground: Color(0xFF0A2647),
+    cellAltTint: Color(0xFF103259),
+    cellBorder: Color(0x5200F5D4),
+    ink: Color(0xFFF0FBFF),
+    mutedInk: Color(0xFF9EDBF0),
+    accent: Color(0xFF00E5FF),
+    accentInk: Color(0xFF04152B),
+    resonanceColor: Color(0xFFFF5EC4),
+    prismGold: Color(0xFFFFE14D),
+    feverAccent: Color(0xFF00F5D4),
+    ambientStyle: PrismAmbientStyle.biolumeMotes,
+    gemRamps: <GemColorRamp>[
+      GemColorRamp(
+        main: Color(0xFF00F5D4),
+        highlight: Color(0xFFBDFFF6),
+        shadow: Color(0xFF00A38E),
+      ),
+      GemColorRamp(
+        main: Color(0xFFFF47A3),
+        highlight: Color(0xFFFFBDDF),
+        shadow: Color(0xFFBD1468),
+      ),
+      GemColorRamp(
+        main: Color(0xFFFFCC29),
+        highlight: Color(0xFFFFF2B3),
+        shadow: Color(0xFFC98C00),
+      ),
+      GemColorRamp(
+        main: Color(0xFF4D9BFF),
+        highlight: Color(0xFFC7E0FF),
+        shadow: Color(0xFF1659C4),
+      ),
+      GemColorRamp(
+        main: Color(0xFF52F26D),
+        highlight: Color(0xFFC7FFD0),
+        shadow: Color(0xFF14A632),
+      ),
+      GemColorRamp(
+        main: Color(0xFFFF7847),
+        highlight: Color(0xFFFFD0BD),
+        shadow: Color(0xFFC43E14),
+      ),
+    ],
+  );
+
+  /// Theme 9: Zümrüt Orman / Emerald Canopy
+  static const PrismPalette emeraldCanopy = PrismPalette(
+    id: PrismThemeId.emeraldCanopy,
+    name: LocalizedText(tr: 'Zümrüt', en: 'Emerald'),
+    fullName: LocalizedText(tr: 'Zümrüt Orman', en: 'Emerald Canopy'),
+    badgeEmoji: '🌿',
+    brightness: Brightness.dark,
+    backgroundGradient: <Color>[
+      Color(0xFF0A2E24),
+      Color(0xFF115E48),
+      Color(0xFF1F8A64),
+    ],
+    background: Color(0xFF0D4434),
+    surface: Color(0xEB104235),
+    surfaceElevated: Color(0xFF175947),
+    boardBackground: Color(0xFF07211A),
+    boardBorderGlow: Color(0xFF69F0AE),
+    cellBackground: Color(0xFF0E362B),
+    cellAltTint: Color(0xFF144537),
+    cellBorder: Color(0x5269F0AE),
+    ink: Color(0xFFF2FFF9),
+    mutedInk: Color(0xFFA9E8D0),
+    accent: Color(0xFF38F29A),
+    accentInk: Color(0xFF07211A),
+    resonanceColor: Color(0xFFFFD60A),
+    prismGold: Color(0xFFFFE752),
+    feverAccent: Color(0xFFA7F3D0),
+    ambientStyle: PrismAmbientStyle.fireflySparks,
+    gemRamps: <GemColorRamp>[
+      GemColorRamp(
+        main: Color(0xFF42F58D),
+        highlight: Color(0xFFC7FFDE),
+        shadow: Color(0xFF12A650),
+      ),
+      GemColorRamp(
+        main: Color(0xFFFF5E7E),
+        highlight: Color(0xFFFFC4D0),
+        shadow: Color(0xFFBD1E40),
+      ),
+      GemColorRamp(
+        main: Color(0xFFFFD933),
+        highlight: Color(0xFFFFF6B8),
+        shadow: Color(0xFFC99500),
+      ),
+      GemColorRamp(
+        main: Color(0xFF29D4FF),
+        highlight: Color(0xFFBFF3FF),
+        shadow: Color(0xFF0086B8),
+      ),
+      GemColorRamp(
+        main: Color(0xFFC075FF),
+        highlight: Color(0xFFEBD1FF),
+        shadow: Color(0xFF7B2EC9),
+      ),
+      GemColorRamp(
+        main: Color(0xFFFF9233),
+        highlight: Color(0xFFFFD9B3),
+        shadow: Color(0xFFC95600),
+      ),
+    ],
+  );
+
+  /// Theme 10: Ametist Vitray / Amethyst Cathedral
+  static const PrismPalette amethystDusk = PrismPalette(
+    id: PrismThemeId.amethystDusk,
+    name: LocalizedText(tr: 'Ametist', en: 'Amethyst'),
+    fullName: LocalizedText(tr: 'Ametist Vitray', en: 'Amethyst Cathedral'),
+    badgeEmoji: '🔮',
+    brightness: Brightness.dark,
+    backgroundGradient: <Color>[
+      Color(0xFF1E103D),
+      Color(0xFF3D1E78),
+      Color(0xFF6B2EA6),
+    ],
+    background: Color(0xFF2E1759),
+    surface: Color(0xEB2D1959),
+    surfaceElevated: Color(0xFF3E2478),
+    boardBackground: Color(0xFF160B30),
+    boardBorderGlow: Color(0xFFD98BFF),
+    cellBackground: Color(0xFF23144A),
+    cellAltTint: Color(0xFF2E1B5E),
+    cellBorder: Color(0x5CD98BFF),
+    ink: Color(0xFFFAF5FF),
+    mutedInk: Color(0xFFD8C2FF),
+    accent: Color(0xFFE066FF),
+    accentInk: Color(0xFF160B30),
+    resonanceColor: Color(0xFF00F0FF),
+    prismGold: Color(0xFFFFE44D),
+    feverAccent: Color(0xFFFF70D9),
+    ambientStyle: PrismAmbientStyle.prismRain,
+    gemRamps: <GemColorRamp>[
+      GemColorRamp(
+        main: Color(0xFFE066FF),
+        highlight: Color(0xFFF5CCFF),
+        shadow: Color(0xFF991FC4),
+      ),
+      GemColorRamp(
+        main: Color(0xFF00E5FF),
+        highlight: Color(0xFFC2F9FF),
+        shadow: Color(0xFF008EB8),
+      ),
+      GemColorRamp(
+        main: Color(0xFFFFE033),
+        highlight: Color(0xFFFFF7B8),
+        shadow: Color(0xFFC99D00),
+      ),
+      GemColorRamp(
+        main: Color(0xFFFF4D7D),
+        highlight: Color(0xFFFFC2D3),
+        shadow: Color(0xFFBD1746),
+      ),
+      GemColorRamp(
+        main: Color(0xFF38F088),
+        highlight: Color(0xFFC4FFDC),
+        shadow: Color(0xFF10A352),
+      ),
+      GemColorRamp(
+        main: Color(0xFFFF8C38),
+        highlight: Color(0xFFFFD6B8),
+        shadow: Color(0xFFC4500B),
+      ),
+    ],
+  );
+
+  /// Theme 11: Yakut Ocak / Crimson Forge
+  static const PrismPalette crimsonForge = PrismPalette(
+    id: PrismThemeId.crimsonForge,
+    name: LocalizedText(tr: 'Yakut', en: 'Forge'),
+    fullName: LocalizedText(tr: 'Yakut Ocak', en: 'Crimson Forge'),
+    badgeEmoji: '🔥',
+    brightness: Brightness.dark,
+    backgroundGradient: <Color>[
+      Color(0xFF2B0814),
+      Color(0xFF63132B),
+      Color(0xFFA8263C),
+    ],
+    background: Color(0xFF470D1F),
+    surface: Color(0xEB471022),
+    surfaceElevated: Color(0xFF611830),
+    boardBackground: Color(0xFF210610),
+    boardBorderGlow: Color(0xFFFF8A5B),
+    cellBackground: Color(0xFF360D1C),
+    cellAltTint: Color(0xFF451224),
+    cellBorder: Color(0x5CFF7A59),
+    ink: Color(0xFFFFF5F7),
+    mutedInk: Color(0xFFFFC4D2),
+    accent: Color(0xFFFF7043),
+    accentInk: Color(0xFFFFFFFF),
+    resonanceColor: Color(0xFFFFD60A),
+    prismGold: Color(0xFFFFE54D),
+    feverAccent: Color(0xFFFF3D71),
+    ambientStyle: PrismAmbientStyle.forgeSparks,
+    gemRamps: <GemColorRamp>[
+      GemColorRamp(
+        main: Color(0xFFFF5C33),
+        highlight: Color(0xFFFFC9B8),
+        shadow: Color(0xFFC42A08),
+      ),
+      GemColorRamp(
+        main: Color(0xFF00E5FF),
+        highlight: Color(0xFFC2F9FF),
+        shadow: Color(0xFF008EB8),
+      ),
+      GemColorRamp(
+        main: Color(0xFFFFE438),
+        highlight: Color(0xFFFFF8BD),
+        shadow: Color(0xFFC9A000),
+      ),
+      GemColorRamp(
+        main: Color(0xFF3CF080),
+        highlight: Color(0xFFC4FFD9),
+        shadow: Color(0xFF12A34C),
+      ),
+      GemColorRamp(
+        main: Color(0xFFC770FF),
+        highlight: Color(0xFFEED1FF),
+        shadow: Color(0xFF802BC9),
+      ),
+      GemColorRamp(
+        main: Color(0xFFFF4DA6),
+        highlight: Color(0xFFFFC2E0),
+        shadow: Color(0xFFBD176A),
+      ),
+    ],
+  );
+
+  /// Theme 12: Göksel Prizma / Celestial Nebula
+  static const PrismPalette celestialCrown = PrismPalette(
+    id: PrismThemeId.celestialCrown,
+    name: LocalizedText(tr: 'Göksel', en: 'Celestial'),
+    fullName: LocalizedText(tr: 'Göksel Prizma', en: 'Celestial Nebula'),
+    badgeEmoji: '✨',
+    brightness: Brightness.dark,
+    backgroundGradient: <Color>[
+      Color(0xFF0C0B2E),
+      Color(0xFF1E1B63),
+      Color(0xFF43238A),
+    ],
+    background: Color(0xFF141247),
+    surface: Color(0xEB191752),
+    surfaceElevated: Color(0xFF282478),
+    boardBackground: Color(0xFF090824),
+    boardBorderGlow: Color(0xFFFFE45E),
+    cellBackground: Color(0xFF131240),
+    cellAltTint: Color(0xFF1C1B57),
+    cellBorder: Color(0x5CFFE45E),
+    ink: Color(0xFFFFFDF5),
+    mutedInk: Color(0xFFD2D0FF),
+    accent: Color(0xFFFFD84D),
+    accentInk: Color(0xFF090824),
+    resonanceColor: Color(0xFF00F0FF),
+    prismGold: Color(0xFFFFF066),
+    feverAccent: Color(0xFFC77DFF),
+    ambientStyle: PrismAmbientStyle.stardustNebula,
+    gemRamps: <GemColorRamp>[
+      GemColorRamp(
+        main: Color(0xFFFFE047),
+        highlight: Color(0xFFFFF8C2),
+        shadow: Color(0xFFC99C00),
+      ),
+      GemColorRamp(
+        main: Color(0xFF00ECFF),
+        highlight: Color(0xFFC4FAFF),
+        shadow: Color(0xFF0093B8),
+      ),
+      GemColorRamp(
+        main: Color(0xFFFF4DB8),
+        highlight: Color(0xFFFFC2E7),
+        shadow: Color(0xFFBD177B),
+      ),
+      GemColorRamp(
+        main: Color(0xFF47F592),
+        highlight: Color(0xFFC7FFDF),
+        shadow: Color(0xFF12A655),
+      ),
+      GemColorRamp(
+        main: Color(0xFFA370FF),
+        highlight: Color(0xFFE3D1FF),
+        shadow: Color(0xFF5E2BC9),
+      ),
+      GemColorRamp(
+        main: Color(0xFFFF8C3B),
+        highlight: Color(0xFFFFD8BA),
+        shadow: Color(0xFFC4500E),
+      ),
+    ],
+  );
+
+  static const List<PrismPalette> all = <PrismPalette>[
+    ceramic,
+    atelier,
+    aurora,
+    obsidian,
+    solarAmber,
+    polarAurora,
+    glacierCrystal,
+    abyssalReef,
+    emeraldCanopy,
+    amethystDusk,
+    crimsonForge,
+    celestialCrown,
+  ];
+
   static PrismPalette of(PrismThemeId id) {
     switch (id) {
       case PrismThemeId.ceramic:
@@ -342,6 +894,22 @@ class PrismThemes {
         return aurora;
       case PrismThemeId.obsidian:
         return obsidian;
+      case PrismThemeId.solarAmber:
+        return solarAmber;
+      case PrismThemeId.polarAurora:
+        return polarAurora;
+      case PrismThemeId.glacierCrystal:
+        return glacierCrystal;
+      case PrismThemeId.abyssalReef:
+        return abyssalReef;
+      case PrismThemeId.emeraldCanopy:
+        return emeraldCanopy;
+      case PrismThemeId.amethystDusk:
+        return amethystDusk;
+      case PrismThemeId.crimsonForge:
+        return crimsonForge;
+      case PrismThemeId.celestialCrown:
+        return celestialCrown;
     }
   }
 }

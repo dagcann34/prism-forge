@@ -1,6 +1,7 @@
 /// 24 handcrafted architectural stages for Prizma Görevi (Prism Quest),
-/// spanning 4 progressive chapters:
-/// - Chapter 1 (1–6): Kristal Temelleri / Crystal Foundations (Prism Cores & Resonance)
+/// each with a unique bilingual poetic name, atmospheric lore subtitle,
+/// and dedicated dazzling theme (zero consecutive theme repeats across 1..24):
+/// - Chapter 1 (1–6): Kristal Temelleri / Crystal Foundations
 /// - Chapter 2 (7–12): Buzul Atölyesi / Glacial Atelier (❄ 2-Hit Frosted Crystals)
 /// - Chapter 3 (13–18): Mühürlü Vitray / Sealed Stained Glass (🔒 Locked Keystones)
 /// - Chapter 4 (19–24): Büyük Prizma / Grand Prism (All mechanics combined)
@@ -17,6 +18,11 @@ class QuestStageCatalog {
       stageNumber: 1,
       chapterNumber: 1,
       title: LocalizedText(tr: 'İlk Kırılım', en: 'First Refraction'),
+      subtitle: LocalizedText(
+        tr: 'Güneşli lagünde ilk kristal ışığı yak.',
+        en: 'Ignite your first crystal beam in the sunlit lagoon.',
+      ),
+      themeId: PrismThemeId.ceramic,
       targetCores: 2,
       targetFrost: 0,
       targetLocks: 0,
@@ -27,7 +33,12 @@ class QuestStageCatalog {
     QuestStageSpec(
       stageNumber: 2,
       chapterNumber: 1,
-      title: LocalizedText(tr: 'İkili Yankı', en: 'Twin Resonance'),
+      title: LocalizedText(tr: 'Şeker Mercek', en: 'Sugar Prism'),
+      subtitle: LocalizedText(
+        tr: 'Tatlı vitray parçalarını ikili yankıyla birleştir.',
+        en: 'Weave stained-glass candy tiles into twin resonance.',
+      ),
+      themeId: PrismThemeId.atelier,
       targetCores: 3,
       targetFrost: 0,
       targetLocks: 0,
@@ -38,7 +49,12 @@ class QuestStageCatalog {
     QuestStageSpec(
       stageNumber: 3,
       chapterNumber: 1,
-      title: LocalizedText(tr: 'Çapraz Işık', en: 'Crossbeam'),
+      title: LocalizedText(tr: 'Sakura Çaprazı', en: 'Blossom Crossbeam'),
+      subtitle: LocalizedText(
+        tr: 'Bahar rüzgârında çapraz ışık şokunu uyandır.',
+        en: 'Awaken cross-wave light amidst drifting cherry petals.',
+      ),
+      themeId: PrismThemeId.aurora,
       targetCores: 3,
       targetFrost: 0,
       targetLocks: 0,
@@ -49,7 +65,12 @@ class QuestStageCatalog {
     QuestStageSpec(
       stageNumber: 4,
       chapterNumber: 1,
-      title: LocalizedText(tr: 'Saf Spektrum', en: 'Pure Spectrum'),
+      title: LocalizedText(tr: 'Kehribar Spektrum', en: 'Amber Spectrum'),
+      subtitle: LocalizedText(
+        tr: 'Altın şafakta dörtlü renk harmonisini kur.',
+        en: 'Align four-color harmony under the golden dawn.',
+      ),
+      themeId: PrismThemeId.solarAmber,
       targetCores: 4,
       targetFrost: 0,
       targetLocks: 0,
@@ -60,7 +81,12 @@ class QuestStageCatalog {
     QuestStageSpec(
       stageNumber: 5,
       chapterNumber: 1,
-      title: LocalizedText(tr: 'Mercek Dengesi', en: 'Lens Balance'),
+      title: LocalizedText(tr: 'Zümrüt Mercek', en: 'Emerald Lens'),
+      subtitle: LocalizedText(
+        tr: 'Orman ışığında kusursuz 2×2 çekirdek dök.',
+        en: 'Forge flawless 2×2 prism cores beneath the canopy.',
+      ),
+      themeId: PrismThemeId.emeraldCanopy,
       targetCores: 4,
       targetFrost: 0,
       targetLocks: 0,
@@ -71,7 +97,12 @@ class QuestStageCatalog {
     QuestStageSpec(
       stageNumber: 6,
       chapterNumber: 1,
-      title: LocalizedText(tr: 'Atölye Finali', en: 'Atelier Finale'),
+      title: LocalizedText(tr: 'Karnaval Finali', en: 'Carnival Overture'),
+      subtitle: LocalizedText(
+        tr: 'Festival ışıkları altında ilk bölümü taçlandır.',
+        en: 'Crown the opening chapter beneath neon festival lights.',
+      ),
+      themeId: PrismThemeId.obsidian,
       targetCores: 5,
       targetFrost: 0,
       targetLocks: 0,
@@ -84,7 +115,12 @@ class QuestStageCatalog {
     QuestStageSpec(
       stageNumber: 7,
       chapterNumber: 2,
-      title: LocalizedText(tr: 'İnce Kırağı', en: 'Thin Frost'),
+      title: LocalizedText(tr: 'Kırağı Şafağı', en: 'Rime Dawn'),
+      subtitle: LocalizedText(
+        tr: 'İnce buzul tabakasını ilk dokunuşla çatlat.',
+        en: 'Fracture the crystalline frost with a clean first strike.',
+      ),
+      themeId: PrismThemeId.glacierCrystal,
       targetCores: 2,
       targetFrost: 2,
       targetLocks: 0,
@@ -95,7 +131,12 @@ class QuestStageCatalog {
     QuestStageSpec(
       stageNumber: 8,
       chapterNumber: 2,
-      title: LocalizedText(tr: 'Buz Çatlağı', en: 'Ice Fracture'),
+      title: LocalizedText(tr: 'Kuzey Çatlağı', en: 'Aurora Fracture'),
+      subtitle: LocalizedText(
+        tr: 'Kutup perdeleri altında donmuş taşları çöz.',
+        en: 'Thaw frosted crystals beneath flowing northern curtains.',
+      ),
+      themeId: PrismThemeId.polarAurora,
       targetCores: 2,
       targetFrost: 3,
       targetLocks: 0,
@@ -106,7 +147,12 @@ class QuestStageCatalog {
     QuestStageSpec(
       stageNumber: 9,
       chapterNumber: 2,
-      title: LocalizedText(tr: 'Kuzey Camı', en: 'Nordic Pane'),
+      title: LocalizedText(tr: 'Derin Buzul', en: 'Abyssal Thaw'),
+      subtitle: LocalizedText(
+        tr: 'Okyanus parıltısında çift darbeli kırılım başlat.',
+        en: 'Trigger double-hit clears in the bioluminescent depths.',
+      ),
+      themeId: PrismThemeId.abyssalReef,
       targetCores: 3,
       targetFrost: 3,
       targetLocks: 0,
@@ -117,7 +163,12 @@ class QuestStageCatalog {
     QuestStageSpec(
       stageNumber: 10,
       chapterNumber: 2,
-      title: LocalizedText(tr: 'Kristal Kış', en: 'Crystal Winter'),
+      title: LocalizedText(tr: 'Ametist Kış', en: 'Amethyst Winter'),
+      subtitle: LocalizedText(
+        tr: 'Mor vitray yağmurunda dört buz kristalini arıt.',
+        en: 'Purify four frost-sealed gems through violet prism rain.',
+      ),
+      themeId: PrismThemeId.amethystDusk,
       targetCores: 2,
       targetFrost: 4,
       targetLocks: 0,
@@ -128,7 +179,12 @@ class QuestStageCatalog {
     QuestStageSpec(
       stageNumber: 11,
       chapterNumber: 2,
-      title: LocalizedText(tr: 'Çift Katman', en: 'Double Glaze'),
+      title: LocalizedText(tr: 'Köz ve Kırağı', en: 'Ember & Frost'),
+      subtitle: LocalizedText(
+        tr: 'Yakut ocağın sıcaklığıyla çift katmanlı buzu erit.',
+        en: 'Melt double-glazed frost with radiant forge embers.',
+      ),
+      themeId: PrismThemeId.crimsonForge,
       targetCores: 3,
       targetFrost: 5,
       targetLocks: 0,
@@ -139,7 +195,12 @@ class QuestStageCatalog {
     QuestStageSpec(
       stageNumber: 12,
       chapterNumber: 2,
-      title: LocalizedText(tr: 'Buzul Kubbesi', en: 'Glacial Dome'),
+      title: LocalizedText(tr: 'Yıldız Kubbesi', en: 'Starlight Dome'),
+      subtitle: LocalizedText(
+        tr: 'Buzul atölyesinin zirvesini göksel ışıkla mühürle.',
+        en: 'Seal the glacial summit with celestial starlight.',
+      ),
+      themeId: PrismThemeId.celestialCrown,
       targetCores: 3,
       targetFrost: 6,
       targetLocks: 0,
@@ -152,7 +213,12 @@ class QuestStageCatalog {
     QuestStageSpec(
       stageNumber: 13,
       chapterNumber: 3,
-      title: LocalizedText(tr: 'İlk Mühür', en: 'First Seal'),
+      title: LocalizedText(tr: 'Vitray Mührü', en: 'Stained Seal'),
+      subtitle: LocalizedText(
+        tr: 'Kilitli taşı kırmak için 4+ renk rezonansını ateşle.',
+        en: 'Ignite 4+ color resonance to shatter your first keystone.',
+      ),
+      themeId: PrismThemeId.amethystDusk,
       targetCores: 2,
       targetFrost: 1,
       targetLocks: 1,
@@ -163,7 +229,12 @@ class QuestStageCatalog {
     QuestStageSpec(
       stageNumber: 14,
       chapterNumber: 3,
-      title: LocalizedText(tr: 'Rezonans Kilidi', en: 'Resonance Lock'),
+      title: LocalizedText(tr: 'Mercan Kilidi', en: 'Lagoon Clasp'),
+      subtitle: LocalizedText(
+        tr: 'Lazer zinciriyle turkuaz mühürleri parçala.',
+        en: 'Shatter turquoise clasps with cardinal optical lasers.',
+      ),
+      themeId: PrismThemeId.ceramic,
       targetCores: 2,
       targetFrost: 2,
       targetLocks: 2,
@@ -174,7 +245,12 @@ class QuestStageCatalog {
     QuestStageSpec(
       stageNumber: 15,
       chapterNumber: 3,
-      title: LocalizedText(tr: 'Vitray Kemeri', en: 'Stained Arch'),
+      title: LocalizedText(tr: 'Yakut Kemer', en: 'Ruby Archway'),
+      subtitle: LocalizedText(
+        tr: 'Örs’te 🌈 Joker dökerek kilitli kemeri aç.',
+        en: 'Temper a 🌈 Wildcard in the Anvil to breach the arch.',
+      ),
+      themeId: PrismThemeId.crimsonForge,
       targetCores: 3,
       targetFrost: 2,
       targetLocks: 2,
@@ -186,6 +262,11 @@ class QuestStageCatalog {
       stageNumber: 16,
       chapterNumber: 3,
       title: LocalizedText(tr: 'Altın Kelepçe', en: 'Gilded Clasp'),
+      subtitle: LocalizedText(
+        tr: 'Güneş ışınlarıyla üçlü mühür kilidini çöz.',
+        en: 'Unlock triple gilded clasps with solar beam chains.',
+      ),
+      themeId: PrismThemeId.solarAmber,
       targetCores: 2,
       targetFrost: 3,
       targetLocks: 3,
@@ -196,7 +277,12 @@ class QuestStageCatalog {
     QuestStageSpec(
       stageNumber: 17,
       chapterNumber: 3,
-      title: LocalizedText(tr: 'Şok Anahtarı', en: 'Shock Key'),
+      title: LocalizedText(tr: 'Neon Anahtar', en: 'Neon Keystone'),
+      subtitle: LocalizedText(
+        tr: 'Şok dalgası ve lazerlerle festival salonunu aç.',
+        en: 'Crack the neon vault with shockwaves and laser hops.',
+      ),
+      themeId: PrismThemeId.obsidian,
       targetCores: 3,
       targetFrost: 2,
       targetLocks: 3,
@@ -207,7 +293,12 @@ class QuestStageCatalog {
     QuestStageSpec(
       stageNumber: 18,
       chapterNumber: 3,
-      title: LocalizedText(tr: 'Mühürlü Salon', en: 'Sealed Hall'),
+      title: LocalizedText(tr: 'Buzul Mahzeni', en: 'Glacial Vault'),
+      subtitle: LocalizedText(
+        tr: 'Dört mührü ve buzu aynı akışta özgür bırak.',
+        en: 'Free four sealed keystones and frost in a single flow.',
+      ),
+      themeId: PrismThemeId.glacierCrystal,
       targetCores: 3,
       targetFrost: 3,
       targetLocks: 4,
@@ -220,7 +311,12 @@ class QuestStageCatalog {
     QuestStageSpec(
       stageNumber: 19,
       chapterNumber: 4,
-      title: LocalizedText(tr: 'Üçlü Döküm', en: 'Triple Forge'),
+      title: LocalizedText(tr: 'Zümrüt Döküm', en: 'Emerald Foundry'),
+      subtitle: LocalizedText(
+        tr: 'Örs, 2×2 Döküm ve Lazer zincirini tek ritimde birleştir.',
+        en: 'Unite Anvil, 2×2 Synthesis, and Lasers in one rhythm.',
+      ),
+      themeId: PrismThemeId.emeraldCanopy,
       targetCores: 3,
       targetFrost: 3,
       targetLocks: 2,
@@ -231,7 +327,12 @@ class QuestStageCatalog {
     QuestStageSpec(
       stageNumber: 20,
       chapterNumber: 4,
-      title: LocalizedText(tr: 'Kırılma Ekseni', en: 'Refraction Axis'),
+      title: LocalizedText(tr: 'Şeker Ekseni', en: 'Prismatic Axis'),
+      subtitle: LocalizedText(
+        tr: 'Dört çekirdeği hizalayıp çapraz kırılım zinciri kur.',
+        en: 'Align four prism cores for a sweeping refraction chain.',
+      ),
+      themeId: PrismThemeId.atelier,
       targetCores: 4,
       targetFrost: 3,
       targetLocks: 3,
@@ -242,7 +343,12 @@ class QuestStageCatalog {
     QuestStageSpec(
       stageNumber: 21,
       chapterNumber: 4,
-      title: LocalizedText(tr: 'Kuantum Kafes', en: 'Quantum Lattice'),
+      title: LocalizedText(tr: 'Derin Kafes', en: 'Abyssal Lattice'),
+      subtitle: LocalizedText(
+        tr: 'Biyolüminesans kafeste buz ve mühür dengesini çöz.',
+        en: 'Master frost and seals inside the bioluminescent lattice.',
+      ),
+      themeId: PrismThemeId.abyssalReef,
       targetCores: 3,
       targetFrost: 4,
       targetLocks: 3,
@@ -253,7 +359,12 @@ class QuestStageCatalog {
     QuestStageSpec(
       stageNumber: 22,
       chapterNumber: 4,
-      title: LocalizedText(tr: 'Işık Katedrali', en: 'Light Cathedral'),
+      title: LocalizedText(tr: 'Sakura Katedrali', en: 'Blossom Cathedral'),
+      subtitle: LocalizedText(
+        tr: 'Taç yaprakları altında ustalık katedralini aydınlat.',
+        en: 'Illuminate the master cathedral beneath sakura petals.',
+      ),
+      themeId: PrismThemeId.aurora,
       targetCores: 4,
       targetFrost: 4,
       targetLocks: 3,
@@ -264,7 +375,12 @@ class QuestStageCatalog {
     QuestStageSpec(
       stageNumber: 23,
       chapterNumber: 4,
-      title: LocalizedText(tr: 'Kraliyet Prizması', en: 'Royal Prism'),
+      title: LocalizedText(tr: 'Kuzey Tacı', en: 'Borealis Crown'),
+      subtitle: LocalizedText(
+        tr: 'Kutup ışıkları eşliğinde son büyük sınavı geç.',
+        en: 'Conquer the penultimate trial beneath aurora ribbons.',
+      ),
+      themeId: PrismThemeId.polarAurora,
       targetCores: 4,
       targetFrost: 4,
       targetLocks: 4,
@@ -275,7 +391,12 @@ class QuestStageCatalog {
     QuestStageSpec(
       stageNumber: 24,
       chapterNumber: 4,
-      title: LocalizedText(tr: 'Büyük Döküm', en: 'The Grand Forge'),
+      title: LocalizedText(tr: 'Büyük Prizma Dökümü', en: 'The Grand Prism Forge'),
+      subtitle: LocalizedText(
+        tr: 'Tüm elementler bir arada — efsanevi mimar unvanını kazan.',
+        en: 'All elements united — claim the Grand Architect crown.',
+      ),
+      themeId: PrismThemeId.celestialCrown,
       targetCores: 5,
       targetFrost: 5,
       targetLocks: 4,

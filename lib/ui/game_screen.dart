@@ -1,11 +1,15 @@
 /// Main one-handed portrait gameplay screen for PRISM FORGE (Prizma Döküm).
 ///
 /// Features:
-/// - Radiant animated ambient backdrops (sunlit bubbles, candy sparkles, petals, bokeh)
-/// - 3 Tray Slots + 4th Golden Prism Anvil Slot (0px extra height, 3-turn Wildcard forging)
-/// - Live pre-drop previews for 2x2 Prism Synthesis, 4+ Resonance & ★->★ Laser Chains
-/// - Drag-and-drop (with upward touch lift) + tap-to-place + 90° Rotate + 3x3 Quantum Nova
-/// - 4 Modes, 4 Joyful Art Themes, lively multi-voice PCM audio, haptics & TR/EN
+/// - 12 dazzling glass/crystal atmospheres that auto-evolve after every Quest stage
+///   and every 1,500 points in Endless mode (with 650ms smooth gradient & ambient cross-fade)
+/// - Unique bilingual poetic stage titles & lore subtitles showcased via a non-blocking
+///   crystalline StageIntroBanner with diagonal glass shimmer sweep
+/// - 60fps tactile animations: damped-spring block pop, diagonal gem sheen,
+///   depth-staggered ★->★ optical laser beams, double concentric shockwaves,
+///   faceted crystal shards, rolling score counter, micro screen-shake,
+///   pulsing Anvil/Nova/Fever glow, and staggered-star Stage Clear modal with
+///   Next-Stage Theme Preview CTA!
 library;
 
 import 'dart:async';
@@ -18,12 +22,14 @@ import '../audio/prism_audio.dart';
 import '../audio/prism_synth.dart';
 import '../engine/models.dart';
 import '../engine/prism_engine.dart';
+import '../engine/quest_stages.dart';
 import '../l10n/prism_strings.dart';
 import '../services/achievements_service.dart';
 import '../services/ad_service.dart';
 import '../storage/prism_storage.dart';
 import '../theme/prism_themes.dart';
 import 'board/prism_board_painter.dart';
+import 'widgets/stage_intro_banner.dart';
 import 'widgets/stage_picker_sheet.dart';
 import 'widgets/trophy_hub_sheet.dart';
 
@@ -48,19 +54,26 @@ class PrismGameScreen extends StatefulWidget {
 }
 
 class _PrismGameScreenState extends State<PrismGameScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   /// Sentinel slot index representing the Golden Prism Anvil (Forge Slot).
   static const int _anvilSlotIndex = -1;
+  static const int _endlessEvolutionStep = 1500;
 
   final PrismEngine _engine = PrismEngine();
   final GlobalKey _boardKey = GlobalKey();
   final math.Random _fxRng = math.Random();
 
   late final AnimationController _ticker;
+  late final AnimationController _themeCrossFade;
+  late final AnimationController _stageIntroCtrl;
+  late final AnimationController _victoryStarsCtrl;
   Timer? _blitzTimer;
   Timer? _bannerTimer;
 
   PrismSaveData _save = const PrismSaveData();
+  PrismPalette? _previousPalette;
+  StageIntroPayload? _stageIntro;
+  int _introSequence = 0;
 
   /// Selected slot: 0..2 for tray, -1 for Prism Anvil, null for none.
   int? _selectedSlot;
@@ -70,10 +83,15 @@ class _PrismGameScreenState extends State<PrismGameScreen>
   bool _novaMode = false;
   GridPoint? _novaHover;
   String? _kineticBanner;
+  int _kineticSeq = 0;
   Color _kineticColor = const Color(0xFFFFE14D);
 
   final List<ShardParticle> _particles = <ShardParticle>[];
   final List<ShockWave> _waves = <ShockWave>[];
+  final Map<GridPoint, double> _cellPopProgress = <GridPoint, double>{};
+  int _displayedScore = 0;
+  int _endlessRealmTier = 0;
+  double _boardShake = 0.0;
   DateTime _lastFrame = DateTime.now();
 
   PrismPalette get _palette => PrismThemes.of(_save.themeId);
@@ -86,6 +104,15 @@ class _PrismGameScreenState extends State<PrismGameScreen>
     return null;
   }
 
+  static int _fnvHash(String input) {
+    var h = 2166136261;
+    for (var i = 0; i < input.length; i++) {
+      h ^= input.codeUnitAt(i);
+      h = (h * 16777619) & 0xFFFFFFFF;
+    }
+    return h;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -93,6 +120,25 @@ class _PrismGameScreenState extends State<PrismGameScreen>
       vsync: this,
       duration: const Duration(seconds: 6),
     )..addListener(_onAnimationTick);
+    _themeCrossFade = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 650),
+      value: 1.0,
+    );
+    _stageIntroCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1950),
+    )..addStatusListener((status) {
+        if (status == AnimationStatus.completed && mounted) {
+          setState(() => _stageIntro = null);
+        }
+      });
+    _victoryStarsCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 780),
+      value: 1.0,
+    );
+
     _engine.startGame(newMode: widget.initialMode, stageNumber: 1);
     unawaited(widget.adService.initialize());
     unawaited(_loadSave());
@@ -101,20 +147,81 @@ class _PrismGameScreenState extends State<PrismGameScreen>
   Future<void> _loadSave() async {
     final loaded = await widget.storage.load();
     if (!mounted) return;
+    final startStage = loaded.currentQuestStage;
+    final initialTheme =
+        (widget.initialMode == GameMode.quest && loaded.autoStageTheme)
+        ? QuestStageCatalog.byNumber(startStage).themeId
+        : loaded.themeId;
+
     setState(() {
-      _save = loaded;
+      _save = loaded.copyWith(themeId: initialTheme);
       widget.audio.soundEnabled = loaded.soundEnabled;
       widget.audio.hapticsEnabled = loaded.hapticsEnabled;
       widget.adService.policy.adsRemoved = loaded.adsRemoved;
       _engine.startGame(
         newMode: widget.initialMode,
-        stageNumber: loaded.currentQuestStage,
+        stageNumber: startStage,
       );
+      _displayedScore = _engine.score;
+      _endlessRealmTier = 0;
       if (!loaded.reducedMotion) {
         _ticker.repeat();
       }
     });
+    if (widget.initialMode == GameMode.quest && !loaded.reducedMotion) {
+      _triggerStageIntroForCurrentQuest();
+    }
     _syncBlitzTimer();
+  }
+
+  void _transitionToTheme(PrismThemeId nextTheme, {bool persist = true}) {
+    if (_save.themeId == nextTheme) return;
+    _previousPalette = _palette;
+    _save = _save.copyWith(themeId: nextTheme);
+    if (_save.reducedMotion) {
+      _themeCrossFade.value = 1.0;
+    } else {
+      _themeCrossFade.forward(from: 0.0);
+    }
+    if (persist) {
+      unawaited(widget.storage.save(_save));
+    }
+  }
+
+  void _triggerStageIntroForCurrentQuest() {
+    if (_save.reducedMotion) return;
+    final spec = QuestStageCatalog.byNumber(_engine.questStageNumber);
+    final stagePalette = PrismThemes.of(
+      _save.autoStageTheme ? spec.themeId : _save.themeId,
+    );
+    final chapterRoman = const <String>['I', 'II', 'III', 'IV']
+        [(spec.chapterNumber - 1).clamp(0, 3)];
+    final eyebrow = _locale == AppLocale.tr
+        ? 'BÖLÜM ${spec.stageNumber.toString().padLeft(2, '0')} • KISIM $chapterRoman'
+        : 'STAGE ${spec.stageNumber.toString().padLeft(2, '0')} • CHAPTER $chapterRoman';
+    _stageIntro = StageIntroPayload(
+      eyebrow: eyebrow,
+      title: spec.title.resolve(_locale),
+      subtitle: spec.subtitle.resolve(_locale),
+      palette: stagePalette,
+      sequenceId: ++_introSequence,
+    );
+    _stageIntroCtrl.forward(from: 0.0);
+  }
+
+  void _triggerRealmEvolutionIntro(PrismPalette newPalette, int tier) {
+    if (_save.reducedMotion) return;
+    _stageIntro = StageIntroPayload(
+      eyebrow:
+          '${PrismStrings.realmEvolutionTag.resolve(_locale)} • ${tier * _endlessEvolutionStep}+',
+      title: newPalette.fullName.resolve(_locale),
+      subtitle: _locale == AppLocale.tr
+          ? 'Sonsuz akışta yeni kristal atmosfere geçildi!'
+          : 'You ascended into a new crystalline atmosphere!',
+      palette: newPalette,
+      sequenceId: ++_introSequence,
+    );
+    _stageIntroCtrl.forward(from: 0.0);
   }
 
   void _syncBlitzTimer() {
@@ -143,23 +250,64 @@ class _PrismGameScreenState extends State<PrismGameScreen>
     );
     _lastFrame = now;
 
-    if (_particles.isEmpty && _waves.isEmpty) return;
+    var needsScoreRebuild = false;
+    if (_displayedScore != _engine.score) {
+      final diff = _engine.score - _displayedScore;
+      if (diff.abs() <= 4 || _save.reducedMotion) {
+        _displayedScore = _engine.score;
+      } else {
+        _displayedScore += diff > 0
+            ? math.max(1, (diff * 0.24).ceil())
+            : math.min(-1, (diff * 0.24).floor());
+      }
+      needsScoreRebuild = true;
+    }
+
+    if (_cellPopProgress.isNotEmpty) {
+      final done = <GridPoint>[];
+      _cellPopProgress.forEach((pt, t) {
+        final nextT = t + dt * 3.1;
+        if (nextT >= 1.0) {
+          done.add(pt);
+        } else {
+          _cellPopProgress[pt] = nextT;
+        }
+      });
+      for (final pt in done) {
+        _cellPopProgress.remove(pt);
+      }
+    }
+
+    if (_boardShake > 0.05) {
+      _boardShake *= math.pow(0.03, dt).toDouble();
+      if (_boardShake < 0.05) _boardShake = 0.0;
+    }
+
     for (var i = _particles.length - 1; i >= 0; i--) {
       final p = _particles[i];
-      p.life -= dt * 1.65;
+      p.life -= dt * 1.55;
       if (p.life <= 0) {
         _particles.removeAt(i);
         continue;
       }
       p.gx += p.vx * dt;
       p.gy += p.vy * dt;
-      p.vy += 8.5 * dt;
+      p.vy += 8.2 * dt;
       p.rotation += p.vRot;
     }
+
     for (var i = _waves.length - 1; i >= 0; i--) {
       final w = _waves[i];
-      w.life -= dt * 2.2;
+      if (w.delay > 0.0) {
+        w.delay -= dt;
+        continue;
+      }
+      w.life -= dt * 2.0;
       if (w.life <= 0) _waves.removeAt(i);
+    }
+
+    if (needsScoreRebuild && mounted) {
+      setState(() {});
     }
   }
 
@@ -168,6 +316,9 @@ class _PrismGameScreenState extends State<PrismGameScreen>
     _blitzTimer?.cancel();
     _bannerTimer?.cancel();
     _ticker.dispose();
+    _themeCrossFade.dispose();
+    _stageIntroCtrl.dispose();
+    _victoryStarsCtrl.dispose();
     super.dispose();
   }
 
@@ -176,14 +327,50 @@ class _PrismGameScreenState extends State<PrismGameScreen>
     setState(() {
       _kineticBanner = text;
       _kineticColor = color;
+      _kineticSeq++;
     });
     _bannerTimer = Timer(const Duration(milliseconds: 1450), () {
       if (mounted) setState(() => _kineticBanner = null);
     });
   }
 
+  void _spawnVictoryConfetti() {
+    if (_save.reducedMotion) return;
+    for (var i = 0; i < 30; i++) {
+      final ang = _fxRng.nextDouble() * math.pi * 2;
+      final spd = 1.8 + _fxRng.nextDouble() * 4.8;
+      final col = _palette
+          .gemFor(i % PrismEngine.paletteColorCount)
+          .main;
+      _particles.add(
+        ShardParticle(
+          gx: 4.0 + (_fxRng.nextDouble() - 0.5) * 3.0,
+          gy: 3.6 + (_fxRng.nextDouble() - 0.5) * 2.0,
+          vx: math.cos(ang) * spd,
+          vy: math.sin(ang) * spd - 2.6,
+          size: 0.16 + _fxRng.nextDouble() * 0.16,
+          rotation: _fxRng.nextDouble() * math.pi,
+          vRot: (_fxRng.nextDouble() - 0.5) * 0.34,
+          color: i % 3 == 0 ? _palette.prismGold : col,
+          isStar: i.isEven,
+        ),
+      );
+    }
+  }
+
   void _spawnClearFx(MoveOutcome outcome) {
     if (_save.reducedMotion) return;
+    if (outcome.linesCleared >= 2 ||
+        outcome.triggeredPrisms.isNotEmpty ||
+        outcome.refractionBeams.isNotEmpty) {
+      _boardShake = math.min(
+        7.5,
+        2.5 +
+            outcome.linesCleared * 1.4 +
+            outcome.refractionBeams.length * 1.6 +
+            outcome.triggeredPrisms.length * 1.2,
+      );
+    }
     for (final r in outcome.clearedRows) {
       _waves.add(ShockWave.row(r, _palette.boardBorderGlow));
     }
@@ -197,6 +384,7 @@ class _PrismGameScreenState extends State<PrismGameScreen>
       _waves.add(ShockWave.ring(s.x + 0.5, s.y + 0.5, Colors.white));
     }
     for (final beam in outcome.refractionBeams) {
+      final hopDelay = math.max(0, beam.depth - 1) * 0.08;
       _waves.add(
         ShockWave.beam(
           beam.from.x + 0.5,
@@ -204,6 +392,15 @@ class _PrismGameScreenState extends State<PrismGameScreen>
           beam.to.x + 0.5,
           beam.to.y + 0.5,
           _palette.prismGold,
+          delay: hopDelay,
+        ),
+      );
+      _waves.add(
+        ShockWave.ring(
+          beam.to.x + 0.5,
+          beam.to.y + 0.5,
+          _palette.resonanceColor,
+          delay: hopDelay + 0.06,
         ),
       );
     }
@@ -258,6 +455,7 @@ class _PrismGameScreenState extends State<PrismGameScreen>
   }
 
   void _startMode(GameMode mode, {int? stage}) {
+    final targetStage = stage ?? _save.currentQuestStage;
     setState(() {
       _selectedSlot = null;
       _draggingSlot = null;
@@ -266,13 +464,38 @@ class _PrismGameScreenState extends State<PrismGameScreen>
       _novaHover = null;
       _particles.clear();
       _waves.clear();
+      _cellPopProgress.clear();
+      _boardShake = 0.0;
       _engine.startGame(
         newMode: mode,
-        stageNumber: stage ?? _save.currentQuestStage,
+        stageNumber: targetStage,
       );
+      _displayedScore = _engine.score;
+      _endlessRealmTier = 0;
+
       if (stage != null) {
         _save = _save.copyWith(currentQuestStage: stage);
-        unawaited(widget.storage.save(_save));
+      }
+
+      // Auto-evolve atmosphere per stage (Quest) or per date (Daily)!
+      if (_save.autoStageTheme) {
+        if (mode == GameMode.quest) {
+          final stageTheme = QuestStageCatalog.byNumber(
+            _engine.questStageNumber,
+          ).themeId;
+          _transitionToTheme(stageTheme, persist: false);
+        } else if (mode == GameMode.daily) {
+          final idx =
+              _fnvHash(_engine.dailyDateKey) % PrismThemeId.values.length;
+          _transitionToTheme(PrismThemeId.values[idx], persist: false);
+        }
+      }
+      unawaited(widget.storage.save(_save));
+
+      if (mode == GameMode.quest) {
+        _triggerStageIntroForCurrentQuest();
+      } else {
+        _stageIntro = null;
       }
     });
     _syncBlitzTimer();
@@ -328,11 +551,37 @@ class _PrismGameScreenState extends State<PrismGameScreen>
     return GridPoint(gx, gy);
   }
 
+  void _checkEndlessRealmEvolution() {
+    if (_engine.mode != GameMode.endless || !_save.autoStageTheme) return;
+    final newTier = _engine.score ~/ _endlessEvolutionStep;
+    if (newTier <= _endlessRealmTier) return;
+    _endlessRealmTier = newTier;
+    const values = PrismThemeId.values;
+    final nextTheme =
+        values[(values.indexOf(_save.themeId) + 1) % values.length];
+    _transitionToTheme(nextTheme);
+    widget.audio.playCue(PrismSoundCue.prismTempered);
+    _triggerRealmEvolutionIntro(PrismThemes.of(nextTheme), newTier);
+  }
+
   void _commitPlacement(int slotIndex, GridPoint anchor) {
+    final placedPiece = _pieceForSlot(slotIndex);
     final outcome = slotIndex == _anvilSlotIndex
         ? _engine.placeForgedPiece(anchor.x, anchor.y)
         : _engine.placePiece(slotIndex, anchor.x, anchor.y);
     if (!outcome.placed) return;
+
+    if (!_save.reducedMotion && placedPiece != null) {
+      for (final c in placedPiece.cells) {
+        final pt = GridPoint(anchor.x + c.x, anchor.y + c.y);
+        if (_engine.grid[pt.y][pt.x] != null) {
+          _cellPopProgress[pt] = 0.0;
+        }
+      }
+    }
+    if (_save.reducedMotion) {
+      _displayedScore = _engine.score;
+    }
 
     setState(() {
       _selectedSlot = null;
@@ -346,6 +595,12 @@ class _PrismGameScreenState extends State<PrismGameScreen>
     if (outcome.objectiveCompleted) {
       _blitzTimer?.cancel();
       widget.audio.playCue(PrismSoundCue.stageClear);
+      _spawnVictoryConfetti();
+      if (_save.reducedMotion) {
+        _victoryStarsCtrl.value = 1.0;
+      } else {
+        _victoryStarsCtrl.forward(from: 0.0);
+      }
     } else if (outcome.allClearBonus) {
       widget.audio.playCue(PrismSoundCue.allClear);
       _showBanner(
@@ -421,6 +676,7 @@ class _PrismGameScreenState extends State<PrismGameScreen>
       widget.audio.playCue(PrismSoundCue.fail);
     }
 
+    _checkEndlessRealmEvolution();
     _recordOutcomeStatsAndTrophies(outcome);
     _persistHighScores();
     setState(() {});
@@ -486,6 +742,7 @@ class _PrismGameScreenState extends State<PrismGameScreen>
     if (!res.placed) return;
     _spawnClearFx(res);
     _waves.add(ShockWave.ring(4.0, 4.0, _palette.prismGold));
+    if (!_save.reducedMotion) _boardShake = 6.5;
     widget.audio.playCue(PrismSoundCue.nova);
     _showBanner(
       _locale == AppLocale.tr ? '✨ SON NEFES KURTARMA!' : '✨ RESCUE REVIVE!',
@@ -517,7 +774,6 @@ class _PrismGameScreenState extends State<PrismGameScreen>
 
   void _handleAnvilTap() {
     if (_engine.isGameOver || _engine.isVictory) return;
-    // If a tray piece is currently selected, stash/swap it into the Prism Anvil!
     if (_selectedSlot != null &&
         _selectedSlot! >= 0 &&
         _engine.tray[_selectedSlot!] != null &&
@@ -531,8 +787,6 @@ class _PrismGameScreenState extends State<PrismGameScreen>
         return;
       }
     }
-    // Otherwise toggle selecting the forged piece for direct board placement,
-    // OR stash the first tray piece if Anvil is empty!
     if (_engine.forgedPiece != null) {
       widget.audio.playCue(PrismSoundCue.pickup);
       setState(() {
@@ -576,11 +830,19 @@ class _PrismGameScreenState extends State<PrismGameScreen>
     if (!outcome.placed) return;
     _spawnClearFx(outcome);
     _waves.add(ShockWave.ring(cell.x + 0.5, cell.y + 0.5, _palette.prismGold));
+    if (!_save.reducedMotion) _boardShake = 7.0;
     widget.audio.playCue(PrismSoundCue.nova);
     _showBanner('NOVA +${outcome.pointsEarned}', _palette.prismGold);
     if (outcome.objectiveCompleted) {
       widget.audio.playCue(PrismSoundCue.stageClear);
+      _spawnVictoryConfetti();
+      if (_save.reducedMotion) {
+        _victoryStarsCtrl.value = 1.0;
+      } else {
+        _victoryStarsCtrl.forward(from: 0.0);
+      }
     }
+    _checkEndlessRealmEvolution();
     _persistHighScores();
     setState(() {
       _novaMode = false;
@@ -591,7 +853,24 @@ class _PrismGameScreenState extends State<PrismGameScreen>
   void _cycleTheme() {
     const values = PrismThemeId.values;
     final next = values[(values.indexOf(_save.themeId) + 1) % values.length];
-    setState(() => _save = _save.copyWith(themeId: next));
+    setState(() => _transitionToTheme(next));
+  }
+
+  void _selectTheme(PrismThemeId id) {
+    setState(() => _transitionToTheme(id));
+  }
+
+  void _toggleAutoTheme() {
+    final next = !_save.autoStageTheme;
+    setState(() {
+      _save = _save.copyWith(autoStageTheme: next);
+      if (next && _engine.mode == GameMode.quest) {
+        _transitionToTheme(
+          QuestStageCatalog.byNumber(_engine.questStageNumber).themeId,
+          persist: false,
+        );
+      }
+    });
     unawaited(widget.storage.save(_save));
   }
 
@@ -620,7 +899,10 @@ class _PrismGameScreenState extends State<PrismGameScreen>
           locale: _locale,
           currentStage: _engine.questStageNumber,
           starsByStage: _save.questStarsByStage,
+          autoStageTheme: _save.autoStageTheme,
           onSelectStage: (stage) => _startMode(GameMode.quest, stage: stage),
+          onSelectTheme: _selectTheme,
+          onToggleAutoTheme: _toggleAutoTheme,
         ),
       ),
     );
@@ -637,14 +919,23 @@ class _PrismGameScreenState extends State<PrismGameScreen>
         backgroundColor: p.background,
         body: Stack(
           children: <Widget>[
-            // Radiant animated "cıvıl cıvıl" gradient + ambient bubbles/sparkles/petals!
+            // 12-atmosphere animated backdrop with silky 650ms theme cross-fade!
             Positioned.fill(
-              child: AnimatedBuilder(
-                animation: _ticker,
-                builder: (context, _) => CustomPaint(
-                  painter: AmbientBackdropPainter(
-                    palette: p,
-                    phase: _save.reducedMotion ? 0.25 : _ticker.value,
+              child: RepaintBoundary(
+                child: AnimatedBuilder(
+                  animation: Listenable.merge(<Listenable>[
+                    _ticker,
+                    _themeCrossFade,
+                  ]),
+                  builder: (context, _) => CustomPaint(
+                    painter: AmbientBackdropPainter(
+                      palette: p,
+                      previousPalette: _previousPalette,
+                      transitionT: Curves.easeInOutCubic.transform(
+                        _themeCrossFade.value,
+                      ),
+                      phase: _save.reducedMotion ? 0.25 : _ticker.value,
+                    ),
                   ),
                 ),
               ),
@@ -660,10 +951,8 @@ class _PrismGameScreenState extends State<PrismGameScreen>
                     _buildModeStrip(p),
                     const SizedBox(height: 8),
                     _buildScoreHud(p),
-                    if (_engine.mode != GameMode.endless) ...<Widget>[
-                      const SizedBox(height: 6),
-                      _buildContextBar(p),
-                    ],
+                    const SizedBox(height: 6),
+                    _buildContextBar(p),
                     const SizedBox(height: 8),
                     _buildEnergyBar(p),
                     const SizedBox(height: 8),
@@ -689,8 +978,10 @@ class _PrismGameScreenState extends State<PrismGameScreen>
   }
 
   Widget _buildSafeAdBannerSlot(PrismPalette p) {
-    return Container(
+    return AnimatedContainer(
       key: const ValueKey<String>('admob_banner_slot'),
+      duration: const Duration(milliseconds: 420),
+      curve: Curves.easeOutCubic,
       height: 44,
       decoration: BoxDecoration(
         color: p.surface.withValues(alpha: 0.72),
@@ -721,17 +1012,18 @@ class _PrismGameScreenState extends State<PrismGameScreen>
   Widget _buildHeader(PrismPalette p) {
     return Row(
       children: <Widget>[
-        Container(
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 420),
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
+            gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: <Color>[Color(0xFF2B1463), Color(0xFFDF248A)],
+              colors: <Color>[p.boardBackground, p.accent],
             ),
             borderRadius: BorderRadius.circular(11),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.45)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.55)),
           ),
           alignment: Alignment.center,
           child: const Icon(
@@ -811,7 +1103,9 @@ class _PrismGameScreenState extends State<PrismGameScreen>
       key: key,
       borderRadius: BorderRadius.circular(10),
       onTap: onTap,
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 420),
+        curve: Curves.easeOutCubic,
         height: 34,
         padding: EdgeInsets.symmetric(horizontal: icon != null ? 9 : 10),
         decoration: BoxDecoration(
@@ -843,7 +1137,9 @@ class _PrismGameScreenState extends State<PrismGameScreen>
               key: ValueKey<String>('mode_${m.name}'),
               borderRadius: BorderRadius.circular(11),
               onTap: () => _startMode(m),
-              child: Container(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOutCubic,
                 height: 32,
                 decoration: BoxDecoration(
                   color: _engine.mode == m ? p.accent : p.surface,
@@ -896,15 +1192,22 @@ class _PrismGameScreenState extends State<PrismGameScreen>
 
     return Row(
       children: <Widget>[
-        _statCard(p, PrismStrings.score.resolve(_locale), '${_engine.score}'),
+        _statCard(p, PrismStrings.score.resolve(_locale), '$_displayedScore'),
         const SizedBox(width: 8),
         Expanded(
-          child: Container(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 420),
+            curve: Curves.easeOutCubic,
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
             decoration: BoxDecoration(
               color: p.surface,
               borderRadius: BorderRadius.circular(13),
-              border: Border.all(color: p.ink.withValues(alpha: 0.14)),
+              border: Border.all(
+                color: _engine.isFeverActive
+                    ? p.prismGold
+                    : p.ink.withValues(alpha: 0.14),
+                width: _engine.isFeverActive ? 1.8 : 1.0,
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -913,13 +1216,22 @@ class _PrismGameScreenState extends State<PrismGameScreen>
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: <Widget>[
                     Text(
-                      PrismStrings.combo.resolve(_locale),
-                      style: TextStyle(color: p.mutedInk, fontSize: 11),
+                      _engine.isFeverActive
+                          ? PrismStrings.feverBadge.resolve(_locale)
+                          : PrismStrings.combo.resolve(_locale),
+                      style: TextStyle(
+                        color: _engine.isFeverActive ? p.accent : p.mutedInk,
+                        fontSize: 10.5,
+                        fontWeight: _engine.isFeverActive
+                            ? FontWeight.w900
+                            : FontWeight.w600,
+                      ),
                     ),
                     Row(
                       children: <Widget>[
                         for (var i = 0; i < 3; i++)
-                          Container(
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 220),
                             width: 6,
                             height: 6,
                             margin: const EdgeInsets.only(left: 3),
@@ -955,7 +1267,9 @@ class _PrismGameScreenState extends State<PrismGameScreen>
 
   Widget _statCard(PrismPalette p, String label, String value) {
     return Expanded(
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 420),
+        curve: Curves.easeOutCubic,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
         decoration: BoxDecoration(
           color: p.surface,
@@ -986,10 +1300,12 @@ class _PrismGameScreenState extends State<PrismGameScreen>
     final String descText;
     final double progress;
     final String metric;
+    final bool opensSheet;
 
     if (_engine.mode == GameMode.quest) {
-      pillText =
-          '${PrismStrings.stage.resolve(_locale)} ${_engine.questStageNumber} ▾';
+      final spec = QuestStageCatalog.byNumber(_engine.questStageNumber);
+      final stPalette = PrismThemes.of(spec.themeId);
+      pillText = '#${spec.stageNumber} ${stPalette.badgeEmoji} ${spec.title.resolve(_locale)} ▾';
       descText = PrismStrings.questObjectiveSummary(
         remainingCores: math.max(
           0,
@@ -1008,8 +1324,23 @@ class _PrismGameScreenState extends State<PrismGameScreen>
           ? 1.0
           : _engine.totalCollected / _engine.totalTargets;
       metric = '${_engine.totalCollected}/${_engine.totalTargets}';
+      opensSheet = true;
+    } else if (_engine.mode == GameMode.endless) {
+      const themes = PrismThemeId.values;
+      final nextPalette = PrismThemes.of(
+        themes[(themes.indexOf(_save.themeId) + 1) % themes.length],
+      );
+      pillText = '${p.badgeEmoji} ${p.fullName.resolve(_locale)} ▾';
+      descText =
+          '${PrismStrings.endlessNextRealm.resolve(_locale)} → ${nextPalette.badgeEmoji} ${nextPalette.name.resolve(_locale)}';
+      progress = ((_engine.score % _endlessEvolutionStep) /
+              _endlessEvolutionStep)
+          .clamp(0.0, 1.0)
+          .toDouble();
+      metric = '${_engine.score % _endlessEvolutionStep}/$_endlessEvolutionStep';
+      opensSheet = true;
     } else if (_engine.mode == GameMode.daily) {
-      pillText = _engine.dailyDateKey;
+      pillText = '${p.badgeEmoji} ${_engine.dailyDateKey}';
       descText = PrismStrings.questObjectiveSummary(
         remainingCores: math.max(
           0,
@@ -1028,15 +1359,19 @@ class _PrismGameScreenState extends State<PrismGameScreen>
           ? 1.0
           : _engine.totalCollected / _engine.totalTargets;
       metric = '${_engine.totalCollected}/${_engine.totalTargets}';
+      opensSheet = true;
     } else {
       pillText =
-          '${PrismStrings.best.resolve(_locale)}: ${_save.bestBlitzScore}';
+          '${p.badgeEmoji} ${PrismStrings.best.resolve(_locale)}: ${_save.bestBlitzScore}';
       descText = PrismStrings.blitzHint.resolve(_locale);
       progress = (_engine.blitzSecondsLeft / 90.0).clamp(0.0, 1.0).toDouble();
       metric = '${_engine.blitzSecondsLeft.ceil()}s';
+      opensSheet = true;
     }
 
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 420),
+      curve: Curves.easeOutCubic,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
         color: p.surface,
@@ -1048,18 +1383,22 @@ class _PrismGameScreenState extends State<PrismGameScreen>
           InkWell(
             key: const ValueKey<String>('context_pill_button'),
             borderRadius: BorderRadius.circular(8),
-            onTap: _engine.mode == GameMode.quest ? _openStagePicker : null,
-            child: Container(
+            onTap: opensSheet ? _openStagePicker : null,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 420),
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              constraints: const BoxConstraints(maxWidth: 164),
               decoration: BoxDecoration(
                 color: p.accent,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
                 pillText,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: p.accentInk,
-                  fontSize: 11,
+                  fontSize: 10.8,
                   fontWeight: FontWeight.w900,
                 ),
               ),
@@ -1073,14 +1412,14 @@ class _PrismGameScreenState extends State<PrismGameScreen>
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: p.ink,
-                fontSize: 11.5,
+                fontSize: 11,
                 fontWeight: FontWeight.w700,
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           SizedBox(
-            width: 54,
+            width: 46,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
@@ -1096,7 +1435,7 @@ class _PrismGameScreenState extends State<PrismGameScreen>
             metric,
             style: TextStyle(
               color: p.ink,
-              fontSize: 11.5,
+              fontSize: 10.8,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -1118,12 +1457,17 @@ class _PrismGameScreenState extends State<PrismGameScreen>
         !_engine.isGameOver &&
         !_engine.isVictory;
 
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 420),
+      curve: Curves.easeOutCubic,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
         color: p.surface,
         borderRadius: BorderRadius.circular(13),
-        border: Border.all(color: p.ink.withValues(alpha: 0.14)),
+        border: Border.all(
+          color: canNova ? p.prismGold : p.ink.withValues(alpha: 0.14),
+          width: canNova ? 1.6 : 1.0,
+        ),
       ),
       child: Row(
         children: <Widget>[
@@ -1181,6 +1525,7 @@ class _PrismGameScreenState extends State<PrismGameScreen>
             label: PrismStrings.nova.resolve(_locale),
             enabled: canNova,
             highlight: _novaMode || canNova,
+            glowPulse: canNova,
             onTap: () => setState(() {
               _novaMode = !_novaMode;
               _selectedSlot = null;
@@ -1199,6 +1544,7 @@ class _PrismGameScreenState extends State<PrismGameScreen>
     required String label,
     required bool enabled,
     required bool highlight,
+    bool glowPulse = false,
     required VoidCallback onTap,
   }) {
     return InkWell(
@@ -1207,15 +1553,30 @@ class _PrismGameScreenState extends State<PrismGameScreen>
       onTap: enabled ? onTap : null,
       child: Opacity(
         opacity: enabled ? 1.0 : 0.42,
-        child: Container(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 240),
           height: 34,
           padding: const EdgeInsets.symmetric(horizontal: 8),
           decoration: BoxDecoration(
             color: highlight ? p.accent : p.surfaceElevated,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: highlight ? p.accent : p.ink.withValues(alpha: 0.16),
+              color: glowPulse
+                  ? p.prismGold
+                  : highlight
+                  ? p.accent
+                  : p.ink.withValues(alpha: 0.16),
+              width: glowPulse ? 1.8 : 1.0,
             ),
+            boxShadow: glowPulse
+                ? <BoxShadow>[
+                    BoxShadow(
+                      color: p.prismGold.withValues(alpha: 0.48),
+                      blurRadius: 10,
+                      spreadRadius: 1,
+                    ),
+                  ]
+                : null,
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -1305,59 +1666,114 @@ class _PrismGameScreenState extends State<PrismGameScreen>
                         }
                       }
                     },
-                    child: AnimatedBuilder(
-                      animation: _ticker,
-                      builder: (context, _) {
-                        return CustomPaint(
-                          size: Size.infinite,
-                          painter: PrismBoardPainter(
-                            grid: _engine.grid,
-                            palette: p,
-                            phase: _save.reducedMotion ? 0.25 : _ticker.value,
-                            particles: _particles,
-                            waves: _waves,
-                            hoverPiece: hoverPiece,
-                            preview: _activePreview,
-                            novaMode: _novaMode,
-                            novaHover: _novaHover,
-                            isFever: _engine.isFeverActive,
-                          ),
-                        );
-                      },
+                    child: RepaintBoundary(
+                      child: AnimatedBuilder(
+                        animation: _ticker,
+                        builder: (context, _) {
+                          final shakeDx = _boardShake > 0.05 && !_save.reducedMotion
+                              ? math.sin(_ticker.value * math.pi * 24) * _boardShake
+                              : 0.0;
+                          final shakeDy = _boardShake > 0.05 && !_save.reducedMotion
+                              ? math.cos(_ticker.value * math.pi * 19) *
+                                    _boardShake *
+                                    0.7
+                              : 0.0;
+                          return Transform.translate(
+                            offset: Offset(shakeDx, shakeDy),
+                            child: CustomPaint(
+                              size: Size.infinite,
+                              painter: PrismBoardPainter(
+                                grid: _engine.grid,
+                                palette: p,
+                                phase: _save.reducedMotion ? 0.25 : _ticker.value,
+                                particles: _particles,
+                                waves: _waves,
+                                cellPopProgress: _cellPopProgress,
+                                reducedMotion: _save.reducedMotion,
+                                hoverPiece: hoverPiece,
+                                preview: _activePreview,
+                                novaMode: _novaMode,
+                                novaHover: _novaHover,
+                                isFever: _engine.isFeverActive,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
                     ),
                   ),
-                  if (_kineticBanner != null)
+                  // Non-blocking crystalline Stage Intro / Realm Evolution Showcase Banner!
+                  if (_stageIntro != null)
                     Positioned(
-                      top: 12,
-                      left: 16,
-                      right: 16,
-                      child: IgnorePointer(
-                        child: Center(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: p.boardBackground.withValues(alpha: 0.94),
-                              borderRadius: BorderRadius.circular(18),
-                              border: Border.all(
-                                color: _kineticColor,
-                                width: 1.8,
-                              ),
-                            ),
-                            child: Text(
-                              _kineticBanner!,
-                              style: TextStyle(
-                                color: _kineticColor,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                          ),
+                      top: 24,
+                      left: 18,
+                      right: 18,
+                      child: AnimatedBuilder(
+                        animation: _stageIntroCtrl,
+                        builder: (context, _) => StageIntroBanner(
+                          key: ValueKey<int>(_stageIntro!.sequenceId),
+                          payload: _stageIntro!,
+                          locale: _locale,
+                          progress: _stageIntroCtrl.value,
+                          reducedMotion: _save.reducedMotion,
                         ),
                       ),
                     ),
+                  // Spring-pop kinetic callout banner (Resonance / Chain-Refraction / Fever!)
+                  Positioned(
+                    top: 12,
+                    left: 16,
+                    right: 16,
+                    child: IgnorePointer(
+                      child: Center(
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 240),
+                          transitionBuilder: (child, anim) => ScaleTransition(
+                            scale: CurvedAnimation(
+                              parent: anim,
+                              curve: Curves.easeOutBack,
+                            ),
+                            child: FadeTransition(opacity: anim, child: child),
+                          ),
+                          child: _kineticBanner == null
+                              ? const SizedBox.shrink()
+                              : Container(
+                                  key: ValueKey<int>(_kineticSeq),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: p.boardBackground.withValues(
+                                      alpha: 0.94,
+                                    ),
+                                    borderRadius: BorderRadius.circular(18),
+                                    border: Border.all(
+                                      color: _kineticColor,
+                                      width: 1.8,
+                                    ),
+                                    boxShadow: <BoxShadow>[
+                                      BoxShadow(
+                                        color: _kineticColor.withValues(
+                                          alpha: 0.35,
+                                        ),
+                                        blurRadius: 12,
+                                      ),
+                                    ],
+                                  ),
+                                  child: Text(
+                                    _kineticBanner!,
+                                    style: TextStyle(
+                                      color: _kineticColor,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ),
+                  ),
                   if (_engine.isGameOver || _engine.isVictory)
                     _buildResultOverlay(p),
                 ],
@@ -1371,6 +1787,17 @@ class _PrismGameScreenState extends State<PrismGameScreen>
 
   Widget _buildResultOverlay(PrismPalette p) {
     final isWin = _engine.isVictory;
+    final isQuestWin = isWin && _engine.mode == GameMode.quest;
+    final hasNextQuestStage = isQuestWin && _engine.questStageNumber < 24;
+    final currentSpec = QuestStageCatalog.byNumber(_engine.questStageNumber);
+    final nextSpec = hasNextQuestStage
+        ? QuestStageCatalog.byNumber(_engine.questStageNumber + 1)
+        : null;
+    final nextPalette = nextSpec != null
+        ? PrismThemes.of(nextSpec.themeId)
+        : null;
+    final earnedStars = isQuestWin ? _engine.computeQuestStars() : 0;
+
     final String title;
     final String desc;
     final String actionLabel;
@@ -1379,11 +1806,11 @@ class _PrismGameScreenState extends State<PrismGameScreen>
       title = PrismStrings.dailyClearTitle.resolve(_locale);
       desc = PrismStrings.dailyClearDesc.resolve(_locale);
       actionLabel = PrismStrings.playAgain.resolve(_locale);
-    } else if (isWin) {
-      title = PrismStrings.stageClearTitle.resolve(_locale);
+    } else if (isQuestWin) {
+      title = '#${currentSpec.stageNumber} • ${currentSpec.title.resolve(_locale)}';
       desc = PrismStrings.stageClearDesc.resolve(_locale);
-      actionLabel = _engine.questStageNumber < 24
-          ? PrismStrings.nextStage.resolve(_locale)
+      actionLabel = hasNextQuestStage && nextSpec != null && nextPalette != null
+          ? '${PrismStrings.nextStage.resolve(_locale)} → ${nextPalette.badgeEmoji} ${nextSpec.title.resolve(_locale)}'
           : PrismStrings.playAgain.resolve(_locale);
     } else if (_engine.mode == GameMode.blitz &&
         _engine.blitzSecondsLeft <= 0) {
@@ -1402,7 +1829,7 @@ class _PrismGameScreenState extends State<PrismGameScreen>
           color: p.boardBackground.withValues(alpha: 0.88),
           borderRadius: BorderRadius.circular(18),
         ),
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(18),
         child: Center(
           child: Container(
             padding: const EdgeInsets.all(18),
@@ -1414,22 +1841,64 @@ class _PrismGameScreenState extends State<PrismGameScreen>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                Icon(
-                  isWin ? Icons.auto_awesome_rounded : Icons.refresh_rounded,
-                  color: p.accent,
-                  size: 36,
-                ),
+                if (isQuestWin)
+                  AnimatedBuilder(
+                    animation: _victoryStarsCtrl,
+                    builder: (context, _) {
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: <Widget>[
+                          for (var i = 0; i < 3; i++)
+                            Builder(
+                              builder: (context) {
+                                final start = i * 0.22;
+                                final localT =
+                                    ((_victoryStarsCtrl.value - start) / 0.45)
+                                        .clamp(0.0, 1.0);
+                                final scale = _save.reducedMotion
+                                    ? 1.0
+                                    : Curves.easeOutBack.transform(localT);
+                                final filled = i < earnedStars;
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                  ),
+                                  child: Transform.scale(
+                                    scale: scale,
+                                    child: Icon(
+                                      filled
+                                          ? Icons.star_rounded
+                                          : Icons.star_outline_rounded,
+                                      color: filled
+                                          ? p.prismGold
+                                          : p.mutedInk.withValues(alpha: 0.45),
+                                      size: i == 1 ? 40 : 32,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                        ],
+                      );
+                    },
+                  )
+                else
+                  Icon(
+                    isWin ? Icons.auto_awesome_rounded : Icons.refresh_rounded,
+                    color: p.accent,
+                    size: 36,
+                  ),
                 const SizedBox(height: 8),
                 Text(
                   title,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: p.ink,
-                    fontSize: 18,
+                    fontSize: 17.5,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 5),
                 Text(
                   desc,
                   textAlign: TextAlign.center,
@@ -1469,32 +1938,60 @@ class _PrismGameScreenState extends State<PrismGameScreen>
                 ],
                 SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton(
-                    key: const ValueKey<String>('overlay_action_button'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: p.accent,
-                      foregroundColor: p.accentInk,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      gradient: nextPalette != null
+                          ? LinearGradient(
+                              colors: nextPalette.backgroundGradient,
+                            )
+                          : null,
+                      color: nextPalette == null ? p.accent : null,
+                      border: nextPalette != null
+                          ? Border.all(
+                              color: nextPalette.boardBorderGlow,
+                              width: 1.5,
+                            )
+                          : null,
                     ),
-                    onPressed: () {
-                      unawaited(widget.adService.maybeShowInterstitial());
-                      if (isWin &&
-                          _engine.mode == GameMode.quest &&
-                          _engine.questStageNumber < 24) {
-                        _startMode(
-                          GameMode.quest,
-                          stage: _engine.questStageNumber + 1,
-                        );
-                      } else {
-                        _startMode(_engine.mode);
-                      }
-                    },
-                    child: Text(
-                      actionLabel,
-                      style: const TextStyle(fontWeight: FontWeight.w900),
+                    child: ElevatedButton(
+                      key: const ValueKey<String>('overlay_action_button'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        foregroundColor: nextPalette != null
+                            ? (nextPalette.brightness == Brightness.dark
+                                  ? Colors.white
+                                  : nextPalette.ink)
+                            : p.accentInk,
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                          horizontal: 10,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: () {
+                        unawaited(widget.adService.maybeShowInterstitial());
+                        if (hasNextQuestStage) {
+                          _startMode(
+                            GameMode.quest,
+                            stage: _engine.questStageNumber + 1,
+                          );
+                        } else {
+                          _startMode(_engine.mode);
+                        }
+                      },
+                      child: Text(
+                        actionLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -1586,7 +2083,8 @@ class _PrismGameScreenState extends State<PrismGameScreen>
       },
       child: AnimatedContainer(
         key: ValueKey<String>('tray_slot_$index'),
-        duration: const Duration(milliseconds: 150),
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
         decoration: BoxDecoration(
           color: p.surface,
           borderRadius: BorderRadius.circular(15),
@@ -1684,22 +2182,40 @@ class _PrismGameScreenState extends State<PrismGameScreen>
           _activePreview = null;
         });
       },
-      child: AnimatedContainer(
-        key: const ValueKey<String>('anvil_slot'),
-        duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.fromLTRB(4, 4, 4, 4),
-        decoration: BoxDecoration(
-          color: tempered
-              ? p.prismGold.withValues(alpha: 0.25)
-              : p.surfaceElevated,
-          borderRadius: BorderRadius.circular(15),
-          border: Border.all(
-            color: selected || tempered
-                ? p.prismGold
-                : p.prismGold.withValues(alpha: 0.65),
-            width: selected || tempered ? 2.4 : 1.6,
-          ),
-        ),
+      child: AnimatedBuilder(
+        animation: _ticker,
+        builder: (context, child) {
+          final pulse = tempered && !_save.reducedMotion
+              ? 0.45 + 0.45 * math.sin(_ticker.value * math.pi * 4).abs()
+              : 0.0;
+          return AnimatedContainer(
+            key: const ValueKey<String>('anvil_slot'),
+            duration: const Duration(milliseconds: 220),
+            padding: const EdgeInsets.fromLTRB(4, 4, 4, 4),
+            decoration: BoxDecoration(
+              color: tempered
+                  ? p.prismGold.withValues(alpha: 0.25)
+                  : p.surfaceElevated,
+              borderRadius: BorderRadius.circular(15),
+              border: Border.all(
+                color: selected || tempered
+                    ? p.prismGold
+                    : p.prismGold.withValues(alpha: 0.65),
+                width: selected || tempered ? 2.4 : 1.6,
+              ),
+              boxShadow: tempered
+                  ? <BoxShadow>[
+                      BoxShadow(
+                        color: p.prismGold.withValues(alpha: pulse * 0.55),
+                        blurRadius: 12,
+                        spreadRadius: 1,
+                      ),
+                    ]
+                  : null,
+            ),
+            child: child,
+          );
+        },
         child: Column(
           children: <Widget>[
             Row(
@@ -1717,7 +2233,8 @@ class _PrismGameScreenState extends State<PrismGameScreen>
                 ),
                 const SizedBox(width: 4),
                 for (var i = 0; i < 3; i++)
-                  Container(
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 220),
                     width: 5.5,
                     height: 5.5,
                     margin: const EdgeInsets.only(left: 2),
@@ -1817,7 +2334,8 @@ class _PrismGameScreenState extends State<PrismGameScreen>
           key: const ValueKey<String>('restart_button'),
           borderRadius: BorderRadius.circular(10),
           onTap: () => _startMode(_engine.mode),
-          child: Container(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 420),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
               color: p.surface,

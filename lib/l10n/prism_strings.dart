@@ -167,4 +167,29 @@ class PrismStrings {
       en: enParts.isEmpty ? 'Completed!' : enParts.join(' • '),
     );
   }
+
+  static const LocalizedText autoThemeOn = LocalizedText(
+    tr: '✨ Oto-Tema: Açık',
+    en: '✨ Auto-Theme: ON',
+  );
+  static const LocalizedText autoThemeOff = LocalizedText(
+    tr: '🔒 Oto-Tema: Sabit',
+    en: '🔒 Auto-Theme: Fixed',
+  );
+  static const LocalizedText themeGalleryLabel = LocalizedText(
+    tr: '12 Göz Alıcı Atmosfer',
+    en: '12 Dazzling Realms',
+  );
+  static const LocalizedText realmEvolutionTag = LocalizedText(
+    tr: 'YENİ ATMOSFER',
+    en: 'REALM EVOLVED',
+  );
+  static const LocalizedText feverBadge = LocalizedText(
+    tr: '🔥 COŞKU ×2',
+    en: '🔥 FEVER ×2',
+  );
+  static const LocalizedText endlessNextRealm = LocalizedText(
+    tr: 'Sonraki Atmosfer',
+    en: 'Next Realm',
+  );
 }

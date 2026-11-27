@@ -48,6 +48,15 @@ void main() {
       expect(find.text('PRISM FORGE'), findsOneWidget);
       expect(find.text('Anvil'), findsOneWidget);
 
+      // Open Visual Stage Journey Map and jump to Stage #3 -> theme auto-evolves to Bahar (Blossom)!
+      await tester.tap(find.byKey(const ValueKey<String>('context_pill_button')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey<String>('auto_theme_toggle')), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey<String>('stage_tile_3')));
+      await tester.pumpAndSettle();
+      expect(find.text('#3/24'), findsOneWidget);
+      expect(find.text('Blossom'), findsOneWidget);
+
       // Rotate consumes 35% energy (50% -> 15%)
       await tester.tap(find.byKey(const ValueKey<String>('rotate_button')));
       await tester.pumpAndSettle();

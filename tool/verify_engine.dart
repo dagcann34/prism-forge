@@ -33,9 +33,26 @@ void main() {
     '=== PRISM FORGE (Prizma Döküm) — Pure Dart Engine Verification ===',
   );
 
-  // 1. Verify all 24 Quest Stages.
+  // 1. Verify all 24 Quest Stages, unique bilingual names, lore & zero-repeat 12-theme progression.
+  _expect(PrismThemeId.values.length == 12, '12 dazzling Prism themes defined');
   _expect(QuestStageCatalog.stages.length == 24, '24 Quest stages exist');
-  for (final spec in QuestStageCatalog.stages) {
+  final trTitles = <String>{};
+  final enTitles = <String>{};
+  final usedThemes = <PrismThemeId>{};
+  var adjacentThemeRepeats = 0;
+  for (var i = 0; i < QuestStageCatalog.stages.length; i++) {
+    final spec = QuestStageCatalog.stages[i];
+    trTitles.add(spec.title.tr);
+    enTitles.add(spec.title.en);
+    usedThemes.add(spec.themeId);
+    _expect(
+      spec.subtitle.tr.isNotEmpty && spec.subtitle.en.isNotEmpty,
+      'Stage #${spec.stageNumber} has bilingual lore subtitle',
+    );
+    if (i > 0 && QuestStageCatalog.stages[i - 1].themeId == spec.themeId) {
+      adjacentThemeRepeats++;
+    }
+
     final engine = PrismEngine();
     engine.startGame(newMode: GameMode.quest, stageNumber: spec.stageNumber);
     var cores = 0;
@@ -61,7 +78,19 @@ void main() {
       'Stage #${spec.stageNumber} starts playable',
     );
   }
-  stdout.writeln('  [OK] All 24 Architect Quest stages verified.');
+  _expect(trTitles.length == 24, 'All 24 stages have unique Turkish names');
+  _expect(enTitles.length == 24, 'All 24 stages have unique English names');
+  _expect(
+    usedThemes.length == PrismThemeId.values.length,
+    'All 12 dazzling themes are showcased across the 24 stages',
+  );
+  _expect(
+    adjacentThemeRepeats == 0,
+    'Zero consecutive stages share the same theme (theme evolves every stage)',
+  );
+  stdout.writeln(
+    '  [OK] All 24 Architect Quest stages, unique TR/EN names & 12-theme rotation verified.',
+  );
 
   // 2. Verify 4+ Harmonic Resonance (x1.5) & Lock breaking.
   {

@@ -23,19 +23,44 @@ enum GameMode {
   blitz,
 }
 
-/// Curated vibrant visual art palettes.
+/// Curated vibrant glass/crystal art palettes (12 dazzling atmospheres).
+/// Keep the first 4 values in exact order for save-file & test compatibility.
 enum PrismThemeId {
-  /// Tropik Mercan / Coral Lagoon (sunlit turquoise & coral)
+  /// 1. Tropik Mercan / Coral Lagoon (sunlit turquoise & coral)
   ceramic,
 
-  /// Şeker Vitray / Candy Prism (joyful stained-glass candy)
+  /// 2. Şeker Vitray / Candy Prism (joyful stained-glass candy)
   atelier,
 
-  /// Bahar Bahçesi / Blossom Garden (blooming spring meadow)
+  /// 3. Bahar Bahçesi / Sakura Blossom (blooming spring meadow)
   aurora,
 
-  /// Karnaval Neon / Neon Carnival (electric festival twilight)
+  /// 4. Karnaval Neon / Neon Carnival (electric festival twilight)
   obsidian,
+
+  /// 5. Altın Şafak / Solar Amber (warm sun-gold radiance)
+  solarAmber,
+
+  /// 6. Kuzey Işığı / Polar Aurora (emerald/cyan northern curtains)
+  polarAurora,
+
+  /// 7. Buzul Kristali / Glacier Quartz (crystalline frost shimmer)
+  glacierCrystal,
+
+  /// 8. Derin Mercan / Biolume Reef (bioluminescent ocean depths)
+  abyssalReef,
+
+  /// 9. Zümrüt Orman / Emerald Canopy (golden-lime firefly sanctuary)
+  emeraldCanopy,
+
+  /// 10. Ametist Vitray / Amethyst Cathedral (refracted violet prism rain)
+  amethystDusk,
+
+  /// 11. Yakut Ocak / Crimson Forge (molten embers & ruby glow)
+  crimsonForge,
+
+  /// 12. Göksel Prizma / Celestial Nebula (starlight & astral gold)
+  celestialCrown,
 }
 
 /// Localized string pair (Turkish + English).
@@ -254,6 +279,8 @@ class QuestStageSpec {
     required this.stageNumber,
     required this.chapterNumber,
     required this.title,
+    required this.subtitle,
+    required this.themeId,
     required this.targetCores,
     required this.targetFrost,
     required this.targetLocks,
@@ -265,6 +292,8 @@ class QuestStageSpec {
   final int stageNumber;
   final int chapterNumber;
   final LocalizedText title;
+  final LocalizedText subtitle;
+  final PrismThemeId themeId;
   final int targetCores;
   final int targetFrost;
   final int targetLocks;
