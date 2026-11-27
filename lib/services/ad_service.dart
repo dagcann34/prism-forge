@@ -390,10 +390,7 @@ class PlatformAdService implements AdService {
 
     AdSize? adaptiveSize;
     try {
-      adaptiveSize =
-          await AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(
-            widthPx,
-          );
+      adaptiveSize = await AdSize.getLargeAnchoredAdaptiveBannerAdSize(widthPx);
     } catch (_) {
       adaptiveSize = null;
     }
