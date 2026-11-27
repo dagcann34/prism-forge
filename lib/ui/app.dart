@@ -1,6 +1,7 @@
 /// Root MaterialApp shell for PRISM FORGE (Prizma Döküm).
 library;
 
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 
 import '../audio/prism_audio.dart';

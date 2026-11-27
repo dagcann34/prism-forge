@@ -5,6 +5,7 @@
 /// 4. Karnaval Neon / Neon Carnival (vibrant royal-violet festival glow)
 library;
 
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 
 import '../engine/models.dart';

@@ -11,6 +11,7 @@ library;
 
 import 'dart:math' as math;
 
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 
 import '../../engine/models.dart';
