@@ -21,7 +21,15 @@ jobs:
       - name: Install Flutter dependencies
         run: flutter pub get
       - name: Static analysis
-        run: flutter analyze
+        run: |
+          if ! OUT=$(flutter analyze 2>&1); then
+            echo "$OUT"
+            while IFS= read -r line; do
+              echo "::error::$line"
+            done <<< "$OUT"
+            exit 1
+          fi
+          echo "$OUT"
       - name: Run unit & widget tests
         run: flutter test
 
