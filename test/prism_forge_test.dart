@@ -75,14 +75,16 @@ void main() {
       expect(find.text('#3/1000'), findsOneWidget);
       expect(find.text('Blossom'), findsOneWidget);
 
-      // Open Stage Map again, switch to Boss Stage #10 -> verifies Moves Left badge appears!
+      // Open Stage Map again, switch to Realm II (101–200) and select #101 -> verifies Moves Left badge!
       await tester.tap(
         find.byKey(const ValueKey<String>('context_pill_button')),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey<String>('stage_tile_10')));
+      await tester.tap(find.byKey(const ValueKey<String>('realm_tab_2')));
       await tester.pumpAndSettle();
-      expect(find.text('#10/1000'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey<String>('stage_tile_101')));
+      await tester.pumpAndSettle();
+      expect(find.text('#101/1000'), findsOneWidget);
       expect(
         find.byKey(const ValueKey<String>('moves_left_badge')),
         findsOneWidget,
