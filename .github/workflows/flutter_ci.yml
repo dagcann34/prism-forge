@@ -44,7 +44,7 @@ jobs:
       ADMOB_ANDROID_REWARDED_ID: ${{ secrets.ADMOB_ANDROID_REWARDED_ID }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -61,13 +61,13 @@ jobs:
           if [ -n "$ADMOB_ANDROID_REWARDED_ID" ]; then DEFINES+=("--dart-define=ADMOB_ANDROID_REWARDED_ID=$ADMOB_ANDROID_REWARDED_ID"); fi
           if ! OUT=$(flutter build apk --release ${DEFINES[@]+"${DEFINES[@]}"} 2>&1); then
             echo "$OUT"
-            echo "$OUT" | tail -n 35 | while IFS= read -r line; do echo "::error::$line"; done
+            printf '%s\n' "$OUT" | tr '\r' '\n' | grep -v 'Unzipping' | grep -iE 'error|exception|failed|failure|what went wrong|could not|fatal|requires|unable|incompatible|conflict' | tail -n 8 | while IFS= read -r line; do echo "::error::$line"; done
             exit 1
           fi
           echo "$OUT"
           if ! OUT=$(flutter build appbundle --release ${DEFINES[@]+"${DEFINES[@]}"} 2>&1); then
             echo "$OUT"
-            echo "$OUT" | tail -n 35 | while IFS= read -r line; do echo "::error::$line"; done
+            printf '%s\n' "$OUT" | tr '\r' '\n' | grep -v 'Unzipping' | grep -iE 'error|exception|failed|failure|what went wrong|could not|fatal|requires|unable|incompatible|conflict' | tail -n 8 | while IFS= read -r line; do echo "::error::$line"; done
             exit 1
           fi
           echo "$OUT"
@@ -95,6 +95,7 @@ jobs:
         with:
           channel: stable
           cache: true
+      - run: flutter config --no-enable-swift-package-manager
       - run: flutter pub get
       - name: Configure iOS AdMob App ID & Build iOS Simulator
         run: |
@@ -107,7 +108,7 @@ jobs:
           if [ -n "$ADMOB_IOS_REWARDED_ID" ]; then DEFINES+=("--dart-define=ADMOB_IOS_REWARDED_ID=$ADMOB_IOS_REWARDED_ID"); fi
           if ! OUT=$(flutter build ios --simulator --no-codesign ${DEFINES[@]+"${DEFINES[@]}"} 2>&1); then
             echo "$OUT"
-            echo "$OUT" | tail -n 35 | while IFS= read -r line; do echo "::error::$line"; done
+            printf '%s\n' "$OUT" | tr '\r' '\n' | grep -iE 'error|unable to find|failed|fatal|pod install|xcodebuild|incompatible|missing' | tail -n 8 | while IFS= read -r line; do echo "::error::$line"; done
             exit 1
           fi
           echo "$OUT"

@@ -2,7 +2,7 @@
 
 ## 1. Gelir Mimarisi (Oyuncu Dostu + Maksimum ARPDAU)
 
-PRISM FORGE içine **`google_mobile_ads: ^6.0.0`** SDK'sı, **Google UMP (GDPR/EEA/UK Gizlilik Onayı)**, **iOS ATT & 43 resmi SKAdNetwork ağı** ve **3 katmanlı gelir stratejisi** tam olarak entegre edilmiştir ([`PlatformAdService`](../lib/services/ad_service.dart), [`AdFrequencyPolicy`](../lib/engine/ad_policy.dart)):
+PRISM FORGE içine **`google_mobile_ads: ^9.0.0`** SDK'sı, **Google UMP (GDPR/EEA/UK Gizlilik Onayı)**, **iOS ATT & 43 resmi SKAdNetwork ağı** ve **3 katmanlı gelir stratejisi** tam olarak entegre edilmiştir ([`PlatformAdService`](../lib/services/ad_service.dart), [`AdFrequencyPolicy`](../lib/engine/ad_policy.dart)):
 
 | Reklam Formatı | Yerleşim | Politika & Koruma |
 |---|---|---|
